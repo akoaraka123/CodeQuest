@@ -5,18 +5,24 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.codequest.data.LocalContentRepository
+import com.example.codequest.model.ActivityItem
+import com.example.codequest.model.ActivityType
+import com.example.codequest.model.CommandSequencePlayback
+import com.example.codequest.model.PlaybackStepResult
+import com.example.codequest.model.playbackBoardConfig
+import com.example.codequest.model.effectiveProcessSteps
+import com.example.codequest.model.normalizeCommandToken
+import com.example.codequest.model.slotCount
 import com.example.codequest.model.Badge
-import com.example.codequest.model.Question
-import com.example.codequest.model.QuestionType
-import com.example.codequest.model.Quest
+import com.example.codequest.model.Course
+import com.example.codequest.model.Lesson
 import com.example.codequest.ui.components.AppTab
-import kotlin.math.roundToInt
 
 enum class AppScreen {
     MAIN_TABS,
     NOTIFICATIONS,
-    LESSON,
-    CHALLENGE,
+    COURSE_DETAIL,
+    LESSON_ACTIVITY,
     RESULT,
     ALL_EARNED_BADGES,
     ALL_LOCKED_BADGES,
@@ -28,12 +34,14 @@ enum class AppScreen {
     HELP_SUPPORT
 }
 
-data class ChallengeResult(
-    val questId: String,
-    val score: Int,
-    val percentage: Int,
-    val xpEarned: Int,
-    val passed: Boolean
+data class LessonSessionResult(
+    val courseId: String,
+    val lessonId: String,
+    val courseTitle: String,
+    val lessonTitle: String,
+    val correctCount: Int,
+    val totalActivities: Int,
+    val xpEarned: Int
 )
 
 data class NotificationItem(
@@ -53,7 +61,14 @@ class CodeQuestAppState {
     var currentScreen by mutableStateOf(AppScreen.MAIN_TABS)
         private set
 
-    var selectedQuestId by mutableStateOf<String?>(null)
+    var selectedCourseId by mutableStateOf<String?>(null)
+        private set
+
+    var selectedLessonId by mutableStateOf<String?>(null)
+        private set
+
+    /** Lesson highlighted on course detail; Start uses this. */
+    var courseDetailFocusLessonId by mutableStateOf<String?>(null)
         private set
 
     var previousTabBeforeFlow by mutableStateOf<AppTab?>(null)
@@ -62,13 +77,48 @@ class CodeQuestAppState {
     var detailParentTab by mutableStateOf<AppTab?>(null)
         private set
 
-    var currentLessonIndex by mutableIntStateOf(0)
+    var currentActivityIndex by mutableIntStateOf(0)
         private set
 
-    var currentQuestionIndex by mutableIntStateOf(0)
+    var lessonInteractionState by mutableStateOf(LessonInteractionState.ACTIVITY)
         private set
 
-    var totalXP by mutableIntStateOf(340)
+    var currentProcessStepIndex by mutableIntStateOf(0)
+        private set
+
+    var pendingAnswerCorrect by mutableStateOf(false)
+        private set
+
+    /** MC / trace: selected option index. Command tasks: unused for selection. */
+    var pendingSubmittedIndex by mutableIntStateOf(-1)
+        private set
+
+    var isAnswerChecked by mutableStateOf(false)
+        private set
+
+    var activityCommandSlots by mutableStateOf(listOf<String?>())
+        private set
+
+    /** Snapshotted program when entering process reveal for command-sequence playback. */
+    var commandPlaybackCommandsSnapshot by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    /** True when process reveal is playing the lesson's reference solution instead of user attempt. */
+    var commandPlaybackUsesReferenceSolution by mutableStateOf(false)
+        private set
+
+    var commandPlaybackResults by mutableStateOf<List<PlaybackStepResult>>(emptyList())
+        private set
+
+    /** Bumps when a new command playback session starts (re-seeds animation state). */
+    var commandPlaybackGeneration by mutableIntStateOf(0)
+        private set
+
+    /** Overrides [ActivityItem.finalResult] after command playback finishes. */
+    var playbackSummaryOverride by mutableStateOf<String?>(null)
+        private set
+
+    var totalXP by mutableIntStateOf(50)
         private set
 
     var streakDays by mutableIntStateOf(7)
@@ -77,13 +127,13 @@ class CodeQuestAppState {
     var debugCorrectCount by mutableIntStateOf(0)
         private set
 
-    var challengeCorrectAnswers by mutableIntStateOf(0)
+    var lessonCorrectThisSession by mutableIntStateOf(0)
         private set
 
-    var challengeXpEarned by mutableIntStateOf(0)
+    var sessionXpEarned by mutableIntStateOf(0)
         private set
 
-    var result by mutableStateOf<ChallengeResult?>(null)
+    var result by mutableStateOf<LessonSessionResult?>(null)
         private set
 
     var previousTabBeforeNotifications by mutableStateOf<AppTab?>(null)
@@ -123,17 +173,17 @@ class CodeQuestAppState {
             ),
             NotificationItem(
                 id = "n2",
-                title = "Quest Progress Updated",
-                message = "You are currently working on Logic Garden.",
-                type = "Quest",
+                title = "Learning Path Updated",
+                message = "Continue Thinking in Code to build strong foundations.",
+                type = "Course",
                 timeText = "10 min ago",
-                icon = "\uD83C\uDF33",
+                icon = "\uD83D\uDCDA",
                 isUnread = true
             ),
             NotificationItem(
                 id = "n3",
                 title = "Badge Progress",
-                message = "You are getting closer to unlocking Debug Hunter.",
+                message = "You are getting closer to unlocking new badges.",
                 type = "Badge",
                 timeText = "1h ago",
                 icon = "\uD83D\uDC1E",
@@ -142,7 +192,7 @@ class CodeQuestAppState {
             NotificationItem(
                 id = "n4",
                 title = "Welcome to CodeQuest",
-                message = "Start your coding journey and complete your first quest.",
+                message = "Start your learning path from the Quests tab.",
                 type = "System",
                 timeText = "Today",
                 icon = "\uD83D\uDE80",
@@ -152,12 +202,21 @@ class CodeQuestAppState {
     )
         private set
 
-    private val questOrder = LocalContentRepository.quests.sortedBy { it.order }
+    private val courseOrder: List<Course> = LocalContentRepository.courses.sortedBy { it.order }
 
-    var completedQuestIds by mutableStateOf(setOf("syntax-hall"))
+    var activeCourseId by mutableStateOf("thinking-in-code")
         private set
 
-    var unlockedQuestIds by mutableStateOf(setOf("syntax-hall", "logic-garden"))
+    var completedLessonIds by mutableStateOf(setOf<String>())
+        private set
+
+    var completedCourseIds by mutableStateOf(setOf<String>())
+        private set
+
+    var unlockedCourseIds by mutableStateOf(setOf("thinking-in-code"))
+        private set
+
+    var unlockedLessonIds by mutableStateOf(setOf("tic-l1"))
         private set
 
     var earnedBadgeIds by mutableStateOf(emptySet<String>())
@@ -165,35 +224,24 @@ class CodeQuestAppState {
 
     var badgeProgress by mutableStateOf(
         mapOf(
-            "first-steps" to 1,
-            "logic-learner" to 0,
-            "streak-master" to streakDays,
-            "debug-hunter" to 0,
-            "loop-explorer" to 0,
-            "freshman-hero" to completedQuestIds.size
+            "first-steps" to 0,
+            "thinking-coder" to 0,
+            "variable-starter" to 0,
+            "function-builder" to 0,
+            "algorithm-explorer" to 0,
+            "cs-rookie" to 0,
+            "neural-beginner" to 0
         )
     )
         private set
 
-    var questLearningXp by mutableStateOf(
-        mutableMapOf(
-            "syntax-hall" to 500,
-            "logic-garden" to 280,
-            "loop-tower" to 0,
-            "array-lab" to 0,
-            "oop-building" to 0
-        )
+    var courseLearningXp by mutableStateOf(
+        courseOrder.associate { it.id to 0 }.toMutableMap()
     )
         private set
 
-    var questCompletedLessonCounts by mutableStateOf(
-        mutableMapOf(
-            "syntax-hall" to 7,
-            "logic-garden" to 4,
-            "loop-tower" to 0,
-            "array-lab" to 0,
-            "oop-building" to 0
-        )
+    var courseCompletedLessonCounts by mutableStateOf(
+        courseOrder.associate { it.id to 0 }.toMutableMap()
     )
         private set
 
@@ -215,192 +263,445 @@ class CodeQuestAppState {
 
     fun hasUnreadNotifications(): Boolean = notifications.any { it.isUnread }
 
-    fun getQuests(): List<Quest> = questOrder
+    fun getCourses(): List<Course> = courseOrder
 
-    fun getCurrentQuest(): Quest? {
-        val active = questOrder.firstOrNull { unlockedQuestIds.contains(it.id) && !completedQuestIds.contains(it.id) }
-        return active ?: questOrder.firstOrNull()
+    fun getCourse(courseId: String): Course? = courseOrder.firstOrNull { it.id == courseId }
+
+    fun getSelectedCourse(): Course? = selectedCourseId?.let { getCourse(it) }
+
+    fun getSelectedLesson(): Lesson? = selectedLessonId?.let { LocalContentRepository.lessonById(it) }
+
+    fun getActivitiesForCurrentLesson(): List<ActivityItem> =
+        getSelectedLesson()?.activities.orEmpty()
+
+    fun getCurrentActivity(): ActivityItem? =
+        getActivitiesForCurrentLesson().getOrNull(currentActivityIndex)
+
+    fun currentRevealSteps(): List<com.example.codequest.model.ProcessStep> {
+        val a = getCurrentActivity() ?: return emptyList()
+        return a.effectiveProcessSteps(pendingAnswerCorrect)
     }
 
-    fun getSelectedQuest(): Quest? = questOrder.firstOrNull { it.id == selectedQuestId }
-
-    fun getCurrentLesson() = getSelectedQuest()?.lessons?.getOrNull(currentLessonIndex)
-
-    fun getQuestionsForSelectedQuest(): List<Question> {
-        val questId = selectedQuestId ?: return emptyList()
-        return LocalContentRepository.questionsByQuestId[questId].orEmpty()
+    fun selectCourseDetailLesson(lessonId: String) {
+        if (lessonId in unlockedLessonIds) {
+            courseDetailFocusLessonId = lessonId
+        }
     }
 
-    fun getCurrentQuestion(): Question? = getQuestionsForSelectedQuest().getOrNull(currentQuestionIndex)
+    private fun pickDefaultFocusLesson(course: Course): String? {
+        val sorted = course.lessons.sortedBy { it.order }
+        val next = sorted.firstOrNull {
+            it.id in unlockedLessonIds && it.id !in completedLessonIds
+        }
+        return next?.id ?: sorted.firstOrNull { it.id in unlockedLessonIds }?.id
+    }
 
-    fun startQuest(questId: String): Boolean {
-        if (!unlockedQuestIds.contains(questId)) return false
+    fun lessonLevelDisplay(lessonId: String, courseId: String): Int {
+        val course = getCourse(courseId) ?: return 1
+        val idx = course.lessons.sortedBy { it.order }.indexOfFirst { it.id == lessonId }
+        return if (idx >= 0) idx + 1 else 1
+    }
+
+    fun getActiveTargetLesson(): Lesson? {
+        val course = getCourse(activeCourseId) ?: return null
+        val sorted = course.lessons.sortedBy { it.order }
+        return sorted.firstOrNull { lid ->
+            lid.id !in completedLessonIds && lid.id in unlockedLessonIds
+        }
+    }
+
+    fun getActiveCourseForHome(): Course? = getCourse(activeCourseId)
+
+    fun ensureDefaultActiveCourse() {
+        if (getCourse(activeCourseId) == null) {
+            activeCourseId = "thinking-in-code"
+        }
+    }
+
+    fun openCourseDetail(courseId: String): Boolean {
+        if (courseId !in unlockedCourseIds) return false
         if (currentScreen == AppScreen.MAIN_TABS) {
             previousTabBeforeFlow = selectedTab
         }
-        selectedQuestId = questId
-        currentLessonIndex = 0
-        currentScreen = AppScreen.LESSON
+        selectedCourseId = courseId
+        val c = getCourse(courseId)
+        courseDetailFocusLessonId = c?.let { pickDefaultFocusLesson(it) }
+        currentScreen = AppScreen.COURSE_DETAIL
         return true
     }
 
-    fun continueActiveQuest() {
-        val quest = getCurrentQuest() ?: return
-        startQuest(quest.id)
-    }
-
-    fun nextLessonOrChallenge() {
-        val lessons = getSelectedQuest()?.lessons.orEmpty()
-        if (lessons.isEmpty()) {
-            startChallenge()
-            return
-        }
-        if (currentLessonIndex < lessons.lastIndex) {
-            currentLessonIndex += 1
-        } else {
-            startChallenge()
-        }
-    }
-
-    fun startChallenge() {
-        currentQuestionIndex = 0
-        challengeCorrectAnswers = 0
-        challengeXpEarned = 0
-        currentScreen = AppScreen.CHALLENGE
-    }
-
-    fun submitAnswer(answerIndex: Int): Pair<Boolean, String> {
-        val question = getCurrentQuestion() ?: return false to "No question available."
-        val correct = question.correctAnswerIndex == answerIndex
-        if (correct) {
-            challengeCorrectAnswers += 1
-            challengeXpEarned += question.xpReward
-            val questId = selectedQuestId ?: ""
-            val current = questLearningXp[questId] ?: 0
-            questLearningXp[questId] = (current + question.xpReward).coerceAtMost(500)
-            if (question.type == QuestionType.DEBUG_CODE) {
-                debugCorrectCount += 1
-            }
-        }
-        return correct to question.explanation
-    }
-
-    fun moveToNextQuestionOrResult() {
-        val questions = getQuestionsForSelectedQuest()
-        if (currentQuestionIndex < questions.lastIndex) {
-            currentQuestionIndex += 1
-            return
-        }
-        finishChallenge()
-    }
-
-    fun finishChallenge() {
-        val questions = getQuestionsForSelectedQuest()
-        if (questions.isEmpty()) {
-            currentScreen = AppScreen.RESULT
-            result = ChallengeResult(selectedQuestId.orEmpty(), 0, 0, 0, false)
-            return
-        }
-        val percentage = ((challengeCorrectAnswers.toFloat() / questions.size) * 100f).roundToInt()
-        val passed = percentage >= 70
-        val questId = selectedQuestId.orEmpty()
-        if (passed) {
-            completedQuestIds = completedQuestIds + questId
-            unlockNextQuest(questId)
-            totalXP += challengeXpEarned + 40
-            val lessonCount = getSelectedQuest()?.lessons?.size ?: 0
-            questCompletedLessonCounts[questId] = lessonCount
-        } else {
-            totalXP += challengeXpEarned
-        }
-        updateBadges()
-        result = ChallengeResult(
-            questId = questId,
-            score = challengeCorrectAnswers,
-            percentage = percentage,
-            xpEarned = challengeXpEarned,
-            passed = passed
-        )
-        currentScreen = AppScreen.RESULT
-    }
-
-    private fun unlockNextQuest(questId: String) {
-        val currentIndex = questOrder.indexOfFirst { it.id == questId }
-        if (currentIndex == -1 || currentIndex == questOrder.lastIndex) return
-        val nextQuest = questOrder[currentIndex + 1]
-        unlockedQuestIds = unlockedQuestIds + nextQuest.id
-    }
-
-    fun retryChallenge() {
-        startChallenge()
-    }
-
-    fun backFromLesson() {
+    fun backFromCourseDetail() {
+        selectedCourseId = null
+        courseDetailFocusLessonId = null
         selectedTab = previousTabBeforeFlow ?: AppTab.QUESTS
         currentScreen = AppScreen.MAIN_TABS
     }
 
-    fun backFromChallenge() {
-        currentQuestionIndex = 0
-        challengeCorrectAnswers = 0
-        challengeXpEarned = 0
-        currentScreen = AppScreen.LESSON
+    fun startLessonFromCourseDetail(): Boolean {
+        val courseId = selectedCourseId ?: return false
+        val lessonId = courseDetailFocusLessonId ?: pickDefaultFocusLesson(getCourse(courseId) ?: return false) ?: return false
+        if (lessonId !in unlockedLessonIds) return false
+        val lesson = LocalContentRepository.lessonById(lessonId) ?: return false
+        if (lesson.courseId != courseId) return false
+        if (lesson.activities.isEmpty()) {
+            completeTextOnlyLessonFromCourse(courseId, lessonId)
+            return true
+        }
+        activeCourseId = courseId
+        selectedLessonId = lessonId
+        currentActivityIndex = 0
+        sessionXpEarned = 0
+        lessonCorrectThisSession = 0
+        resetInteractionForActivity()
+        initCommandSlots()
+        currentScreen = AppScreen.LESSON_ACTIVITY
+        return true
     }
 
-    fun reviewLesson() {
-        currentLessonIndex = 0
-        currentScreen = AppScreen.LESSON
+    private fun completeTextOnlyLessonFromCourse(courseId: String, lessonId: String) {
+        val lesson = LocalContentRepository.lessonById(lessonId) ?: return
+        val course = getCourse(courseId) ?: return
+        val readXp = 25
+        sessionXpEarned = readXp
+        totalXP += readXp
+        courseLearningXp[course.id] = ((courseLearningXp[course.id] ?: 0) + readXp).coerceAtMost(500)
+        lessonCorrectThisSession = 0
+        selectedLessonId = lessonId
+        selectedCourseId = courseId
+        applyLessonCompletionRewards(lesson, course, questionsCorrect = 0, totalActivities = 0)
+    }
+
+    fun completeTextOnlyFromLessonIntro() {
+        val lesson = getSelectedLesson() ?: return
+        val course = getSelectedCourse() ?: return
+        if (lesson.activities.isNotEmpty()) return
+        val readXp = 25
+        sessionXpEarned = readXp
+        totalXP += readXp
+        courseLearningXp[course.id] = ((courseLearningXp[course.id] ?: 0) + readXp).coerceAtMost(500)
+        lessonCorrectThisSession = 0
+        applyLessonCompletionRewards(lesson, course, questionsCorrect = 0, totalActivities = 0)
+    }
+
+    fun initCommandSlots() {
+        val a = getCurrentActivity()
+        activityCommandSlots = if (a != null && a.type == ActivityType.COMMAND_SEQUENCE) {
+            List(a.slotCount()) { null }
+        } else {
+            emptyList()
+        }
+    }
+
+    fun fillNextCommandSlot(command: String) {
+        val idx = activityCommandSlots.indexOfFirst { it == null }
+        if (idx < 0) return
+        val copy = activityCommandSlots.toMutableList()
+        copy[idx] = command
+        activityCommandSlots = copy
+    }
+
+    fun assignCommandToSlot(slotIndex: Int, command: String) {
+        if (slotIndex !in activityCommandSlots.indices) return
+        val copy = activityCommandSlots.toMutableList()
+        copy[slotIndex] = command
+        activityCommandSlots = copy
+    }
+
+    fun clearCommandSlot(slotIndex: Int) {
+        if (slotIndex !in activityCommandSlots.indices) return
+        val copy = activityCommandSlots.toMutableList()
+        copy[slotIndex] = null
+        activityCommandSlots = copy
+    }
+
+    fun clearAllCommandSlots() {
+        initCommandSlots()
+    }
+
+    fun selectMcOption(answerIndex: Int) {
+        pendingSubmittedIndex = answerIndex
+    }
+
+    fun activityReadyForCheck(): Boolean {
+        val a = getCurrentActivity() ?: return false
+        return when (a.type) {
+            ActivityType.COMMAND_SEQUENCE ->
+                activityCommandSlots.isNotEmpty() && activityCommandSlots.all { it != null }
+            else -> pendingSubmittedIndex >= 0 && a.correctAnswerIndex >= 0
+        }
+    }
+
+    private fun resetInteractionForActivity() {
+        lessonInteractionState = LessonInteractionState.ACTIVITY
+        currentProcessStepIndex = 0
+        pendingAnswerCorrect = false
+        pendingSubmittedIndex = -1
+        isAnswerChecked = false
+        commandPlaybackCommandsSnapshot = emptyList()
+        commandPlaybackUsesReferenceSolution = false
+        commandPlaybackResults = emptyList()
+        playbackSummaryOverride = null
+        commandPlaybackGeneration = 0
+        initCommandSlots()
+    }
+
+    fun submitActivityCheck() {
+        val a = getCurrentActivity() ?: return
+        isAnswerChecked = true
+        pendingAnswerCorrect = when (a.type) {
+            ActivityType.COMMAND_SEQUENCE ->
+                CommandSequencePlayback.sequenceMeetsObjective(
+                    a.playbackBoardConfig(),
+                    activityCommandSlots
+                )
+            ActivityType.MULTIPLE_CHOICE,
+            ActivityType.OUTPUT_TRACING,
+            ActivityType.DEBUG_CODE ->
+                pendingSubmittedIndex >= 0 && pendingSubmittedIndex == a.correctAnswerIndex
+        }
+        if (a.type == ActivityType.COMMAND_SEQUENCE) {
+            // Command-sequence: run process playback immediately after Check.
+            showProcessRevealFromFeedback()
+            return
+        }
+        lessonInteractionState = LessonInteractionState.FEEDBACK
+    }
+
+    fun showProcessRevealFromFeedback() {
+        val a = getCurrentActivity()
+        if (a?.type == ActivityType.COMMAND_SEQUENCE) {
+            commandPlaybackCommandsSnapshot = activityCommandSlots.mapNotNull { it }
+            commandPlaybackUsesReferenceSolution = false
+            val cfg = a.playbackBoardConfig()
+            commandPlaybackResults = CommandSequencePlayback.simulate(cfg, commandPlaybackCommandsSnapshot)
+            commandPlaybackGeneration += 1
+            currentProcessStepIndex = 0
+        } else {
+            currentProcessStepIndex = 0
+        }
+        lessonInteractionState = LessonInteractionState.PROCESS_REVEAL
+    }
+
+    /** Re-run the same command playback from reset board state while staying on PROCESS_REVEAL. */
+    fun requestCommandPlaybackReplay() {
+        if (lessonInteractionState != LessonInteractionState.PROCESS_REVEAL) return
+        val a = getCurrentActivity() ?: return
+        if (a.type != ActivityType.COMMAND_SEQUENCE) return
+        if (commandPlaybackCommandsSnapshot.isEmpty()) return
+        commandPlaybackGeneration += 1
+    }
+
+    /** Play the instructor/reference sequence in process reveal so the learner can compare paths. */
+    fun requestCorrectCommandPlayback() {
+        if (lessonInteractionState != LessonInteractionState.PROCESS_REVEAL) return
+        val a = getCurrentActivity() ?: return
+        if (a.type != ActivityType.COMMAND_SEQUENCE) return
+        if (a.correctSequence.isEmpty()) return
+        commandPlaybackCommandsSnapshot = a.correctSequence.map { normalizeCommandToken(it) }
+        commandPlaybackUsesReferenceSolution = true
+        val cfg = a.playbackBoardConfig()
+        commandPlaybackResults = CommandSequencePlayback.simulate(cfg, commandPlaybackCommandsSnapshot)
+        commandPlaybackGeneration += 1
+    }
+
+    fun nextProcessStep() {
+        val steps = currentRevealSteps()
+        if (currentProcessStepIndex < steps.lastIndex) {
+            currentProcessStepIndex += 1
+        }
+    }
+
+    fun showFinalResultState(playbackSummaryOverride: String? = null) {
+        this.playbackSummaryOverride = playbackSummaryOverride
+        lessonInteractionState = LessonInteractionState.FINAL_RESULT
+    }
+
+    fun proceedAfterFinalResult() {
+        val a = getCurrentActivity() ?: return
+        if (pendingAnswerCorrect) {
+            sessionXpEarned += a.xpReward
+            totalXP += a.xpReward
+            val cid = selectedCourseId ?: ""
+            courseLearningXp[cid] = ((courseLearningXp[cid] ?: 0) + a.xpReward).coerceAtMost(500)
+            lessonCorrectThisSession += 1
+            if (a.type == ActivityType.DEBUG_CODE) {
+                debugCorrectCount += 1
+            }
+        }
+        val activities = getActivitiesForCurrentLesson()
+        if (currentActivityIndex < activities.lastIndex) {
+            currentActivityIndex += 1
+            resetInteractionForActivity()
+            lessonInteractionState = LessonInteractionState.ACTIVITY
+            return
+        }
+        val lesson = getSelectedLesson() ?: return
+        val course = getSelectedCourse() ?: return
+        val bonusXp = 35
+        sessionXpEarned += bonusXp
+        totalXP += bonusXp
+        courseLearningXp[course.id] = ((courseLearningXp[course.id] ?: 0) + bonusXp).coerceAtMost(500)
+        applyLessonCompletionRewards(
+            lesson = lesson,
+            course = course,
+            questionsCorrect = lessonCorrectThisSession,
+            totalActivities = lesson.activities.size
+        )
+    }
+
+    fun retryCurrentActivity() {
+        resetInteractionForActivity()
+        lessonInteractionState = LessonInteractionState.ACTIVITY
+    }
+
+    private fun applyLessonCompletionRewards(
+        lesson: Lesson,
+        course: Course,
+        questionsCorrect: Int,
+        totalActivities: Int
+    ) {
+        completedLessonIds = completedLessonIds + lesson.id
+        val doneCount = course.lessons.count { it.id in completedLessonIds }
+        courseCompletedLessonCounts[course.id] = doneCount
+        unlockNextLesson(course.id, lesson.id)
+        if (course.lessons.all { it.id in completedLessonIds }) {
+            completedCourseIds = completedCourseIds + course.id
+            unlockNextCourse(course.id)
+        }
+        activeCourseId = course.id
+        updateBadges()
+        result = LessonSessionResult(
+            courseId = course.id,
+            lessonId = lesson.id,
+            courseTitle = course.title,
+            lessonTitle = lesson.title,
+            correctCount = questionsCorrect,
+            totalActivities = totalActivities,
+            xpEarned = sessionXpEarned
+        )
+        currentScreen = AppScreen.RESULT
+    }
+
+    private fun unlockNextLesson(courseId: String, completedLessonId: String) {
+        val next = LocalContentRepository.nextLessonInCourse(courseId, completedLessonId)
+        if (next != null) {
+            unlockedLessonIds = unlockedLessonIds + next.id
+        }
+    }
+
+    private fun unlockNextCourse(completedCourseId: String) {
+        val next = LocalContentRepository.nextCourseAfter(completedCourseId) ?: return
+        unlockedCourseIds = unlockedCourseIds + next.id
+        val firstLesson = next.lessons.minByOrNull { it.order }
+        if (firstLesson != null) {
+            unlockedLessonIds = unlockedLessonIds + firstLesson.id
+        }
+    }
+
+    fun continueLearning() {
+        ensureDefaultActiveCourse()
+        openCourseDetail(activeCourseId)
+    }
+
+    fun backFromLessonActivity() {
+        currentActivityIndex = 0
+        resetInteractionForActivity()
+        sessionXpEarned = 0
+        lessonCorrectThisSession = 0
+        selectedLessonId = null
+        currentScreen = AppScreen.COURSE_DETAIL
     }
 
     fun goHome() {
         selectedTab = AppTab.HOME
         currentScreen = AppScreen.MAIN_TABS
+        selectedCourseId = null
+        selectedLessonId = null
+        courseDetailFocusLessonId = null
     }
 
-    fun openNextQuestAfterPass() {
-        val currentId = selectedQuestId ?: return
-        val currentIndex = questOrder.indexOfFirst { it.id == currentId }
-        if (currentIndex == -1 || currentIndex == questOrder.lastIndex) {
+    fun goToLearningPath() {
+        selectedTab = AppTab.QUESTS
+        currentScreen = AppScreen.MAIN_TABS
+        selectedCourseId = null
+        selectedLessonId = null
+        courseDetailFocusLessonId = null
+    }
+
+    fun resultContinueNextLesson() {
+        val r = result ?: run {
             goHome()
             return
         }
-        val next = questOrder[currentIndex + 1]
-        if (unlockedQuestIds.contains(next.id)) {
-            startQuest(next.id)
-        } else {
+        val course = getCourse(r.courseId) ?: run {
             goHome()
+            return
         }
+        val next = LocalContentRepository.nextLessonInCourse(course.id, r.lessonId)
+        result = null
+        selectedCourseId = course.id
+        activeCourseId = course.id
+        if (next != null && next.id in unlockedLessonIds) {
+            courseDetailFocusLessonId = next.id
+            currentScreen = AppScreen.COURSE_DETAIL
+        } else {
+            courseDetailFocusLessonId = pickDefaultFocusLesson(course)
+            currentScreen = AppScreen.COURSE_DETAIL
+        }
+    }
+
+    fun openNextCourseFromResult() {
+        val r = result ?: run {
+            goHome()
+            return
+        }
+        val nextCourse = LocalContentRepository.nextCourseAfter(r.courseId)
+        result = null
+        if (nextCourse != null && nextCourse.id in unlockedCourseIds) {
+            openCourseDetail(nextCourse.id)
+        } else {
+            goToLearningPath()
+        }
+    }
+
+    fun reviewCurrentLessonActivities() {
+        result = null
+        currentActivityIndex = 0
+        sessionXpEarned = 0
+        lessonCorrectThisSession = 0
+        resetInteractionForActivity()
+        currentScreen = AppScreen.LESSON_ACTIVITY
     }
 
     private fun updateBadges() {
         val updates = badgeProgress.toMutableMap()
-
-        if (completedQuestIds.isNotEmpty()) {
+        if (completedLessonIds.isNotEmpty()) {
             earnedBadgeIds = earnedBadgeIds + "first-steps"
             updates["first-steps"] = 1
         }
-        if (completedQuestIds.contains("logic-garden")) {
-            earnedBadgeIds = earnedBadgeIds + "logic-learner"
-            updates["logic-learner"] = 1
+        if (completedCourseIds.contains("thinking-in-code")) {
+            earnedBadgeIds = earnedBadgeIds + "thinking-coder"
+            updates["thinking-coder"] = 1
         }
-        updates["streak-master"] = streakDays
-        updates["debug-hunter"] = debugCorrectCount
-        if (completedQuestIds.contains("loop-tower")) {
-            earnedBadgeIds = earnedBadgeIds + "loop-explorer"
-            updates["loop-explorer"] = 1
+        if (completedCourseIds.contains("programming-variables")) {
+            earnedBadgeIds = earnedBadgeIds + "variable-starter"
+            updates["variable-starter"] = 1
         }
-        updates["freshman-hero"] = completedQuestIds.size
-        if (completedQuestIds.size >= 5) {
-            earnedBadgeIds = earnedBadgeIds + "freshman-hero"
+        if (completedCourseIds.contains("programming-functions")) {
+            earnedBadgeIds = earnedBadgeIds + "function-builder"
+            updates["function-builder"] = 1
         }
-
-        val debugTarget = LocalContentRepository.badges.firstOrNull { it.id == "debug-hunter" }?.target
-        if (debugTarget != null && debugCorrectCount >= debugTarget) {
-            earnedBadgeIds = earnedBadgeIds + "debug-hunter"
+        if (completedCourseIds.contains("algorithmic-thinking")) {
+            earnedBadgeIds = earnedBadgeIds + "algorithm-explorer"
+            updates["algorithm-explorer"] = 1
         }
-        val streakTarget = LocalContentRepository.badges.firstOrNull { it.id == "streak-master" }?.target
-        if (streakTarget != null && streakDays >= streakTarget) {
-            earnedBadgeIds = earnedBadgeIds + "streak-master"
+        if (completedCourseIds.contains("cs-fundamentals")) {
+            earnedBadgeIds = earnedBadgeIds + "cs-rookie"
+            updates["cs-rookie"] = 1
+        }
+        if (completedCourseIds.contains("neural-intro")) {
+            earnedBadgeIds = earnedBadgeIds + "neural-beginner"
+            updates["neural-beginner"] = 1
         }
         badgeProgress = updates
     }

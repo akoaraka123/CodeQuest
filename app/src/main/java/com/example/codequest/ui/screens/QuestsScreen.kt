@@ -11,31 +11,31 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.codequest.state.CodeQuestAppState
 import com.example.codequest.ui.components.AppTab
 import com.example.codequest.ui.components.BottomNavigationBar
+import com.example.codequest.ui.components.CourseProgressStatus
+import com.example.codequest.ui.components.CourseSection
+import com.example.codequest.ui.components.CourseUiModel
 import com.example.codequest.ui.components.DailyChallengeCard
-import com.example.codequest.ui.components.QuestStatus
-import com.example.codequest.ui.components.QuestSection
-import com.example.codequest.ui.components.QuestUiModel
+import com.example.codequest.ui.components.LearningPathStatsRow
 import com.example.codequest.ui.components.QuestsHeaderSection
-import com.example.codequest.ui.components.StatsRow
 import com.example.codequest.ui.theme.BackgroundEnd
 import com.example.codequest.ui.theme.BackgroundStart
 import com.example.codequest.ui.theme.PrimaryCyan
 import com.example.codequest.ui.theme.PrimaryPurple
 import com.example.codequest.ui.theme.TextMuted
 import com.example.codequest.ui.theme.TextPrimary
-import com.example.codequest.state.CodeQuestAppState
 
 @Composable
 fun CodeQuestQuestsScreen(
@@ -43,24 +43,31 @@ fun CodeQuestQuestsScreen(
     selectedTab: AppTab,
     onTabSelected: (AppTab) -> Unit
 ) {
-    val quests = appState.getQuests().map { quest ->
+    val courses = appState.getCourses().map { course ->
+        val sorted = course.lessons.sortedBy { it.order }
+        val done = sorted.count { it.id in appState.completedLessonIds }
+        val total = sorted.size
+        val progress = if (total > 0) done.toFloat() / total.coerceAtLeast(1) else 0f
         val status = when {
-            appState.completedQuestIds.contains(quest.id) -> QuestStatus.COMPLETED
-            appState.unlockedQuestIds.contains(quest.id) -> QuestStatus.ACTIVE
-            else -> QuestStatus.LOCKED
+            course.id in appState.completedCourseIds -> CourseProgressStatus.COMPLETED
+            course.id !in appState.unlockedCourseIds -> CourseProgressStatus.LOCKED
+            course.id == appState.activeCourseId -> CourseProgressStatus.ACTIVE
+            else -> CourseProgressStatus.AVAILABLE
         }
-        val lessonsText = when (status) {
-            QuestStatus.COMPLETED -> "${appState.questCompletedLessonCounts[quest.id] ?: quest.lessons.size} / ${quest.lessons.size} lessons"
-            QuestStatus.ACTIVE -> "${appState.questCompletedLessonCounts[quest.id] ?: 0} of ${quest.lessons.size} lessons completed"
-            QuestStatus.LOCKED -> "0 / ${quest.lessons.size} lessons"
+        val progressText = when (status) {
+            CourseProgressStatus.COMPLETED -> "$done / $total lessons"
+            CourseProgressStatus.LOCKED -> "Locked — finish the previous course"
+            CourseProgressStatus.ACTIVE, CourseProgressStatus.AVAILABLE ->
+                "$done of $total lessons completed"
         }
-        QuestUiModel(
-            id = quest.id,
-            title = quest.title,
-            description = quest.description,
+        CourseUiModel(
+            id = course.id,
+            title = course.title,
+            description = course.description,
             status = status,
-            lessonsText = lessonsText,
-            icon = quest.icon
+            progressText = progressText,
+            progress = progress,
+            icon = course.icon
         )
     }
 
@@ -87,22 +94,22 @@ fun CodeQuestQuestsScreen(
                 }
                 item {
                     Text(
-                        text = "Quest Journey",
+                        text = "Learning Path",
                         color = TextPrimary,
                         fontSize = 28.sp
                     )
                 }
                 item {
-                    StatsRow(
-                        questsCompleted = appState.completedQuestIds.size,
-                        totalQuests = appState.getQuests().size,
+                    LearningPathStatsRow(
+                        coursesCompleted = appState.completedCourseIds.size,
+                        totalCourses = appState.getCourses().size,
                         totalXp = appState.totalXP
                     )
                 }
-                item { DailyChallengeCard(onStartClick = { appState.continueActiveQuest() }) }
+                item { DailyChallengeCard(onStartClick = { appState.continueLearning() }) }
                 item {
                     Text(
-                        text = "Your Quests",
+                        text = "Courses",
                         color = TextPrimary,
                         fontSize = 30.sp
                     )
@@ -111,14 +118,14 @@ fun CodeQuestQuestsScreen(
                     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(PrimaryCyan.copy(alpha = 0.4f)))
                 }
                 item {
-                    if (quests.isEmpty()) {
+                    if (courses.isEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("No quests available yet", color = TextPrimary, fontSize = 18.sp)
-                            Text("Add quest content to LocalContentRepository to begin.", color = TextMuted, fontSize = 13.sp)
+                            Text("No courses available yet", color = TextPrimary, fontSize = 18.sp)
+                            Text("Add course content to LocalContentRepository to begin.", color = TextMuted, fontSize = 13.sp)
                         }
                     } else {
-                        QuestSection(quests) { selected ->
-                            appState.startQuest(selected.id)
+                        CourseSection(courses) { selected ->
+                            appState.openCourseDetail(selected.id)
                         }
                     }
                 }

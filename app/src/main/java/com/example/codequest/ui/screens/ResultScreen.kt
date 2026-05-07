@@ -1,5 +1,6 @@
 package com.example.codequest.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,10 +13,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.activity.compose.BackHandler
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,7 +44,7 @@ fun CodeQuestResultScreen(appState: CodeQuestAppState) {
         Row(modifier = Modifier.fillMaxWidth()) {
             CodeQuestBackButton(onClick = { appState.goHome() }, isClose = true)
             Text(
-                "Challenge Result",
+                "Lesson complete",
                 color = TextPrimary,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
@@ -56,27 +55,40 @@ fun CodeQuestResultScreen(appState: CodeQuestAppState) {
         }
         GlassCard {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Score: ${result?.score ?: 0}", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text("Percentage: ${result?.percentage ?: 0}%", color = TextPrimary, fontSize = 16.sp)
-                Text("XP Earned: ${result?.xpEarned ?: 0}", color = TextPrimary, fontSize = 16.sp)
                 Text(
-                    if (result?.passed == true) "Passed" else "Failed",
-                    color = if (result?.passed == true) CompletedGreen else Color(0xFFFF8A80),
+                    text = result?.courseTitle ?: "",
+                    color = TextPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
-                if (result?.passed != true) {
-                    Text("You need at least 70% to unlock next quest.", color = TextMuted)
+                Text(
+                    text = result?.lessonTitle ?: "Lesson",
+                    color = TextMuted,
+                    fontSize = 14.sp
+                )
+                if ((result?.totalActivities ?: 0) > 0) {
+                    Text(
+                        text = "Activities correct: ${result?.correctCount ?: 0} / ${result?.totalActivities ?: 0}",
+                        color = TextPrimary,
+                        fontSize = 16.sp
+                    )
                 }
+                Text(
+                    text = "XP earned this lesson: ${result?.xpEarned ?: 0}",
+                    color = CompletedGreen,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Nice work — lesson unlocked the next step on your path.",
+                    color = TextMuted,
+                    fontSize = 13.sp
+                )
             }
         }
         GradientButton(text = "Back to Home") { appState.goHome() }
-        GradientButton(text = "Retry Challenge") { appState.retryChallenge() }
-        if (result?.passed != true) {
-            GradientButton(text = "Review Lesson") { appState.reviewLesson() }
-        }
-        if (result?.passed == true) {
-            GradientButton(text = "Next Quest") { appState.openNextQuestAfterPass() }
-        }
+        GradientButton(text = "Next lesson") { appState.resultContinueNextLesson() }
+        GradientButton(text = "Learning Path") { appState.goToLearningPath() }
+        GradientButton(text = "Review lesson") { appState.reviewCurrentLessonActivities() }
     }
 }

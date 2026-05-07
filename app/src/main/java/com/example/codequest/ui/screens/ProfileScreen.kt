@@ -51,8 +51,8 @@ fun CodeQuestProfileScreen(
     selectedTab: AppTab,
     onTabSelected: (AppTab) -> Unit
 ) {
-    val learningRows = appState.getQuests().mapIndexed { index, quest ->
-        val value = appState.questLearningXp[quest.id] ?: 0
+    val learningRows = appState.getCourses().mapIndexed { index, course ->
+        val value = appState.courseLearningXp[course.id] ?: 0
         val accent = when (index % 5) {
             0 -> ActiveCyan
             1 -> CompletedGreen
@@ -68,7 +68,7 @@ fun CodeQuestProfileScreen(
                 3 -> "\u25A6"
                 else -> "\u25FC"
             },
-            title = quest.title.take(7),
+            title = course.title.take(10),
             xpText = "$value / 500 XP",
             progress = value / 500f,
             accent = accent
@@ -121,9 +121,9 @@ fun CodeQuestProfileScreen(
             item {
                 ProfileStatsRow(
                     totalXp = appState.totalXP,
-                    questsCompleted = appState.completedQuestIds.size,
-                    badgesEarned = appState.earnedBadgeIds.size,
-                    streakDays = appState.streakDays
+                    lessonsCompleted = appState.completedLessonIds.size,
+                    coursesCompleted = appState.completedCourseIds.size,
+                    badgesEarned = appState.earnedBadgeIds.size
                 )
             }
             item { SectionHeader("Learning Stats") }

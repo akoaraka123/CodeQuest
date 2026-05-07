@@ -1,10 +1,10 @@
 package com.example.codequest.model
 
-data class Quest(
+data class Course(
     val id: String,
     val title: String,
     val description: String,
-    val icon: String,
     val order: Int,
+    val icon: String,
     val lessons: List<Lesson>
 )

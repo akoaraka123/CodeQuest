@@ -1,12 +1,17 @@
 package com.example.codequest.data
 
+import com.example.codequest.model.ActivityItem
+import com.example.codequest.model.ActivityType
 import com.example.codequest.model.Badge
+import com.example.codequest.model.CommandBoardSetup
+import com.example.codequest.model.Direction
+import com.example.codequest.model.GridPosition
+import com.example.codequest.model.Course
 import com.example.codequest.model.Lesson
-import com.example.codequest.model.Question
-import com.example.codequest.model.QuestionType
-import com.example.codequest.model.Quest
+import com.example.codequest.model.ProcessStep
 
 object LocalContentRepository {
+
     data class AchievementSeed(
         val icon: String,
         val title: String,
@@ -25,144 +30,25 @@ object LocalContentRepository {
         val count: Int
     )
 
-    val quests: List<Quest> = listOf(
-        Quest(
-            id = "syntax-hall",
-            title = "Syntax Hall",
-            description = "Master the basics of programming syntax.",
-            icon = "\uD83C\uDFDB\uFE0F",
-            order = 0,
-            lessons = listOf(
-                Lesson("syn-1", "syntax-hall", "Variables and Types", "Learn val, var, and basic types.", 0),
-                Lesson("syn-2", "syntax-hall", "Functions", "Create and call basic functions.", 1),
-                Lesson("syn-3", "syntax-hall", "String Templates", "Use \$variable interpolation.", 2),
-                Lesson("syn-4", "syntax-hall", "Condition Basics", "Write basic if/else logic.", 3),
-                Lesson("syn-5", "syntax-hall", "Collections Intro", "Understand list and map basics.", 4),
-                Lesson("syn-6", "syntax-hall", "Null Safety Intro", "Handle nullable values safely.", 5),
-                Lesson("syn-7", "syntax-hall", "Practice Round", "Review syntax in small tasks.", 6)
-            )
-        ),
-        Quest(
-            id = "logic-garden",
-            title = "Logic Garden",
-            description = "Conditions, operators, and boolean logic.",
-            icon = "\uD83C\uDF33",
-            order = 1,
-            lessons = listOf(
-                Lesson("log-1", "logic-garden", "If/Else Decisions", "Branch behavior using true/false conditions.", 0),
-                Lesson("log-2", "logic-garden", "Boolean Operators", "Use &&, ||, and ! to combine checks.", 1),
-                Lesson("log-3", "logic-garden", "Comparison Operators", "Compare values with >, <, >=, <=, ==, !=.", 2),
-                Lesson("log-4", "logic-garden", "Nested Conditions", "Build decisions inside decisions.", 3),
-                Lesson("log-5", "logic-garden", "Short-Circuit Logic", "Understand evaluation order with && and ||.", 4),
-                Lesson("log-6", "logic-garden", "Guard Clauses", "Exit early when conditions fail.", 5),
-                Lesson("log-7", "logic-garden", "Logic Practice", "Apply logic in simple scenarios.", 6)
-            )
-        ),
-        Quest(
-            id = "loop-tower",
-            title = "Loop Tower",
-            description = "Learn loops and control the flow.",
-            icon = "\uD83D\uDDFC\uFE0F",
-            order = 2,
-            lessons = listOf(
-                Lesson("loop-1", "loop-tower", "For Loops", "Repeat over ranges.", 0),
-                Lesson("loop-2", "loop-tower", "While Loops", "Repeat until condition changes.", 1),
-                Lesson("loop-3", "loop-tower", "Do-While", "Run once before checking.", 2),
-                Lesson("loop-4", "loop-tower", "Break", "Stop loops safely.", 3),
-                Lesson("loop-5", "loop-tower", "Continue", "Skip to next iteration.", 4),
-                Lesson("loop-6", "loop-tower", "Nested Loops", "Loop inside loop.", 5),
-                Lesson("loop-7", "loop-tower", "Loop Practice", "Solve repetition drills.", 6)
-            )
-        ),
-        Quest(
-            id = "array-lab",
-            title = "Array Lab",
-            description = "Work with arrays and collections.",
-            icon = "\uD83E\uDDF1",
-            order = 3,
-            lessons = listOf(
-                Lesson("arr-1", "array-lab", "Array Basics", "Access values by index.", 0),
-                Lesson("arr-2", "array-lab", "Mutable Lists", "Add and remove items.", 1),
-                Lesson("arr-3", "array-lab", "Iteration", "Loop through lists.", 2),
-                Lesson("arr-4", "array-lab", "Map and Filter", "Transform and filter data.", 3),
-                Lesson("arr-5", "array-lab", "Finding Values", "Use contains and indexOf.", 4),
-                Lesson("arr-6", "array-lab", "Sorting", "Order collections.", 5),
-                Lesson("arr-7", "array-lab", "Collection Practice", "Apply list operations.", 6)
-            )
-        ),
-        Quest(
-            id = "oop-building",
-            title = "OOP Building",
-            description = "Explore object-oriented programming.",
-            icon = "\uD83C\uDFDB\uFE0F",
-            order = 4,
-            lessons = listOf(
-                Lesson("oop-1", "oop-building", "Classes", "Define class blueprints.", 0),
-                Lesson("oop-2", "oop-building", "Objects", "Create object instances.", 1),
-                Lesson("oop-3", "oop-building", "Properties", "Store object state.", 2),
-                Lesson("oop-4", "oop-building", "Methods", "Define object behavior.", 3),
-                Lesson("oop-5", "oop-building", "Inheritance", "Reuse class behavior.", 4),
-                Lesson("oop-6", "oop-building", "Interfaces", "Define contracts.", 5),
-                Lesson("oop-7", "oop-building", "OOP Practice", "Apply class design basics.", 6)
-            )
-        )
+    val courses: List<Course> = listOf(
+        courseThinkingInCode(),
+        courseProgrammingWithVariables(),
+        courseThinkingInPython(),
+        courseProgrammingWithFunctions(),
+        courseAlgorithmicThinking(),
+        courseCsFundamentals(),
+        courseNeuralNetworks()
     )
 
-    val questionsByQuestId: Map<String, List<Question>> = mapOf(
-        "logic-garden" to listOf(
-            Question(
-                id = "lg-q1",
-                questId = "logic-garden",
-                type = QuestionType.MULTIPLE_CHOICE,
-                questionText = "Which condition checks if score is between 50 and 100?",
-                options = listOf("score > 50 || score < 100", "score >= 50 && score <= 100", "score == 50..100", "score in 50 until 100 && score > 100"),
-                correctAnswerIndex = 1,
-                explanation = "Use && so both lower and upper checks must be true.",
-                hint = "Both conditions must pass."
-            ),
-            Question(
-                id = "lg-q2",
-                questId = "logic-garden",
-                type = QuestionType.FILL_IN_THE_BLANK,
-                questionText = "Fill the operator so mark 70 and above passes.",
-                codeBlock = "val passed = mark ____ 70",
-                options = listOf(">=", ">", "==", "!="),
-                correctAnswerIndex = 0,
-                explanation = ">= includes 70 itself."
-            ),
-            Question(
-                id = "lg-q3",
-                questId = "logic-garden",
-                type = QuestionType.PREDICT_OUTPUT,
-                questionText = "Predict output:",
-                codeBlock = "val a = true\nval b = false\nprintln(a || b && false)",
-                options = listOf("true", "false", "error", "null"),
-                correctAnswerIndex = 0,
-                explanation = "&& runs first, then ||."
-            ),
-            Question(
-                id = "lg-q4",
-                questId = "logic-garden",
-                type = QuestionType.DEBUG_CODE,
-                questionText = "Fix this to check non-admin users:",
-                codeBlock = "if (role = \"admin\") { showAdminPanel() }",
-                options = listOf("if (role == \"admin\")", "if (role != \"admin\")", "if (!role == \"admin\")", "if (role.equals)"),
-                correctAnswerIndex = 1,
-                explanation = "Requirement says non-admin, so use !="
-            ),
-            Question(
-                id = "lg-q5",
-                questId = "logic-garden",
-                type = QuestionType.MULTIPLE_CHOICE,
-                questionText = "Which expression means either premium OR has coupon?",
-                options = listOf("isPremium && hasCoupon", "isPremium || hasCoupon", "!isPremium && !hasCoupon", "isPremium == hasCoupon"),
-                correctAnswerIndex = 1,
-                explanation = "Use OR when either condition is enough."
-            )
-        )
+    val badges: List<Badge> = listOf(
+        Badge("first-steps", "First Steps", "Complete your first lesson.", "👣", 1),
+        Badge("thinking-coder", "Thinking Coder", "Finish the Thinking in Code course.", "💡", 1),
+        Badge("variable-starter", "Variable Starter", "Finish Programming with Variables.", "📦", 1),
+        Badge("function-builder", "Function Builder", "Finish Programming with Functions.", "🔧", 1),
+        Badge("algorithm-explorer", "Algorithm Explorer", "Finish Algorithmic Thinking.", "🧭", 1),
+        Badge("cs-rookie", "CS Rookie", "Finish Computer Science Fundamentals.", "💻", 1),
+        Badge("neural-beginner", "Neural Beginner", "Finish Introduction to Neural Networks.", "🧠", 1)
     )
-
-    val badges: List<Badge> = emptyList()
 
     val settingsItems = listOf(
         SettingSeed("\uD83D\uDC64", "Edit Profile", null),
@@ -172,6 +58,832 @@ object LocalContentRepository {
     )
 
     val profileAchievements: List<AchievementSeed> = emptyList()
-
     val badgeCategories: List<CategorySeed> = emptyList()
+
+    fun courseById(id: String): Course? = courses.firstOrNull { it.id == id }
+
+    fun lessonById(lessonId: String): Lesson? =
+        courses.asSequence().flatMap { it.lessons.asSequence() }.firstOrNull { it.id == lessonId }
+
+    fun courseIdForLesson(lessonId: String): String? = lessonById(lessonId)?.courseId
+
+    fun nextCourseAfter(courseId: String): Course? {
+        val ordered = courses.sortedBy { it.order }
+        val idx = ordered.indexOfFirst { it.id == courseId }
+        if (idx == -1 || idx >= ordered.lastIndex) return null
+        return ordered[idx + 1]
+    }
+
+    fun nextLessonInCourse(courseId: String, currentLessonId: String): Lesson? {
+        val course = courseById(courseId) ?: return null
+        val sorted = course.lessons.sortedBy { it.order }
+        val i = sorted.indexOfFirst { it.id == currentLessonId }
+        if (i == -1 || i >= sorted.lastIndex) return null
+        return sorted[i + 1]
+    }
+
+    private fun courseThinkingInCode(): Course = Course(
+        id = "thinking-in-code",
+        title = "Thinking in Code",
+        description = "Learn how to break problems into clear instructions.",
+        order = 0,
+        icon = "🧠",
+        lessons = listOf(
+            Lesson(
+                id = "tic-l1",
+                courseId = "thinking-in-code",
+                title = "What is a Program?",
+                description = "See programs as precise instructions, not magic.",
+                content = "A program is a sequence of instructions that tells a computer what to do. " +
+                    "Think of it like a recipe: each step must be clear enough for something that takes everything literally.",
+                order = 0,
+                example = "Print a greeting → read input → decide what to do next.",
+                activities = listOf(
+                    ActivityItem(
+                        id = "tic-l1-a1",
+                        lessonId = "tic-l1",
+                        type = ActivityType.DEBUG_CODE,
+                        prompt = "Which line best represents a computer program?",
+                        difficultyLabel = "Foundational skill",
+                        codeSnippet = "Pick the best definition:\nA) Hardware parts\nB) Step-by-step instructions",
+                        options = listOf(
+                            "A list of physical computer parts",
+                            "Step-by-step instructions for a computer to follow",
+                            "A social media post about technology",
+                            "A cable that connects two screens"
+                        ),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct. Programs are logical instructions.",
+                        incorrectFeedback = "A program is software logic, not hardware.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Define program",
+                                explanation = "A program is instructions a machine can execute in order."
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Exclude hardware terms",
+                                explanation = "Parts like cables/screens are hardware, not programs."
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Pick precise wording",
+                                explanation = "Step-by-step instructions is the correct definition."
+                            )
+                        ),
+                        finalResult = "A program is step-by-step instructions for a computer to follow.",
+                        finalOutput = null
+                    )
+                )
+            ),
+            Lesson(
+                id = "tic-l2",
+                courseId = "thinking-in-code",
+                title = "Instructions and Sequences",
+                description = "Order matters—chain steps to reach a goal.",
+                content = "Computers execute instructions in order unless control flow says otherwise. " +
+                    "The right sequence is what turns a plan into a successful run.",
+                order = 1,
+                example = "Move → collect → turn → move → collect on a small grid.",
+                activities = listOf(
+                    ActivityItem(
+                        id = "tic-l2-gems",
+                        lessonId = "tic-l2",
+                        type = ActivityType.COMMAND_SEQUENCE,
+                        prompt = "Complete the program. Find the red target.",
+                        difficultyLabel = "Foundational skill",
+                        visualType = "GRID_COLOR_TARGET",
+                        availableCommands = listOf(
+                            "move forward",
+                            "turn right",
+                            "select red",
+                            "turn left"
+                        ),
+                        correctSequence = listOf(
+                            "move forward",
+                            "turn right",
+                            "move forward",
+                            "select red"
+                        ),
+                        gridRows = 3,
+                        gridCols = 3,
+                        goldTileCount = 0,
+                        // 0-based grid: bot starts at (1,0) facing east; red target is at (2,1).
+                        commandBoardSetup = CommandBoardSetup(
+                            robotRow = 1,
+                            robotCol = 0,
+                            facing = Direction.RIGHT,
+                            targetTiles = listOf(GridPosition(2, 1))
+                        ),
+                        correctFeedback = "Correct! Let's see how your program runs.",
+                        incorrectFeedback = "Not quite. Let's walk through the logic.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Move into position",
+                                explanation = "The robot moves from the start tile to the empty tile.",
+                                highlightedCommand = "move forward",
+                                miniVisualHint = "◇ → bot moves one cell"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Turn toward target",
+                                explanation = "The robot turns right to face down toward the red target.",
+                                highlightedCommand = "turn right",
+                                miniVisualHint = "↻ face the target"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Reach the target",
+                                explanation = "The robot moves forward onto the red target tile.",
+                                highlightedCommand = "move forward",
+                                miniVisualHint = "◇ → onto red tile"
+                            ),
+                            ProcessStep(
+                                stepNumber = 4,
+                                title = "Finish the run",
+                                explanation = "The robot selects the red target.",
+                                highlightedCommand = "select red",
+                                miniVisualHint = "✓ objective met"
+                            )
+                        ),
+                        processStepsWhenIncorrect = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Replay your sequence mentally",
+                                explanation = "Walk through each filled slot in order. This board needs: move forward, turn right, move forward, select red.",
+                                miniVisualHint = "⚠ order matters"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Check target selection",
+                                explanation = "select red is only correct while the robot is standing on the red tile.",
+                                highlightedCommand = "select red"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Compare to the intended path",
+                                explanation = "Compare your four commands to the intended plan and adjust the slot that breaks the path.",
+                                miniVisualHint = "Tip: tap a slot to clear it"
+                            )
+                        ),
+                        finalResult = "Red target found and selected.",
+                        finalOutput = null
+                    ),
+                    ActivityItem(
+                        id = "tic-l2-gems-2",
+                        lessonId = "tic-l2",
+                        type = ActivityType.COMMAND_SEQUENCE,
+                        prompt = "Complete the program. Collect all the gold.",
+                        difficultyLabel = "Foundational skill",
+                        visualType = "GRID_GOLD",
+                        availableCommands = listOf(
+                            "move forward",
+                            "collect gold",
+                            "turn right",
+                            "turn left"
+                        ),
+                        correctSequence = listOf(
+                            "turn left",
+                            "move forward",
+                            "collect gold",
+                            "turn right",
+                            "move forward",
+                            "collect gold"
+                        ),
+                        gridRows = 4,
+                        gridCols = 4,
+                        goldTileCount = 2,
+                        // 0-based grid: bot starts at (2,2) facing east; second puzzle uses a different path.
+                        commandBoardSetup = CommandBoardSetup(
+                            robotRow = 2,
+                            robotCol = 2,
+                            facing = Direction.RIGHT,
+                            targetTiles = listOf(GridPosition(1, 2), GridPosition(1, 3))
+                        ),
+                        correctFeedback = "Great run. You found the new path.",
+                        incorrectFeedback = "Not quite. Try tracing direction changes step by step.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Face the upper path",
+                                explanation = "Turn left first so the robot can move to the top row.",
+                                highlightedCommand = "turn left"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Reach the first gold",
+                                explanation = "Move forward and collect the gold directly ahead.",
+                                highlightedCommand = "collect gold"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Shift to the next tile",
+                                explanation = "Turn right, move forward, then collect the final gold.",
+                                highlightedCommand = "move forward"
+                            )
+                        ),
+                        processStepsWhenIncorrect = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Check your first turn",
+                                explanation = "This puzzle needs a turn before the first move.",
+                                miniVisualHint = "Start by rotating"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Verify both collect actions",
+                                explanation = "Each collect must happen on a gold tile.",
+                                highlightedCommand = "collect gold"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Replay and compare",
+                                explanation = "Compare your sequence with the target path and adjust the earliest mismatch."
+                            )
+                        ),
+                        finalResult = "All gold collected on puzzle 2.",
+                        finalOutput = null
+                    )
+                )
+            ),
+            Lesson(
+                id = "tic-l3",
+                courseId = "thinking-in-code",
+                title = "Input, Process, Output",
+                description = "Most programs follow: receive data, work on it, show a result.",
+                content = "Most programs follow a simple pattern. They receive input, process it, then produce output.",
+                order = 2,
+                example = "A login form: input (typed password), process (compare hash), output (success or error message).",
+                activities = listOf(
+                    ActivityItem(
+                        id = "tic-l3-a1",
+                        lessonId = "tic-l3",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What is the output?",
+                        difficultyLabel = "Trace the program",
+                        codeSnippet = "x = 5\ny = 2\nprint(x + y)",
+                        options = listOf("52", "7", "x + y", "Error"),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct! The program adds the two numeric values.",
+                        incorrectFeedback = "Not quite. Let's walk through the process.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Read the variables",
+                                explanation = "x stores the value 5 and y stores the value 2.",
+                                codeBlock = "x = 5\ny = 2"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Understand the operation",
+                                explanation = "The plus sign adds the values stored in x and y.",
+                                highlightedCommand = "+",
+                                miniVisualHint = "arithmetic add"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Calculate the result",
+                                explanation = "5 + 2 equals 7.",
+                                miniVisualHint = "= 7"
+                            )
+                        ),
+                        finalResult = "The correct answer is 7.",
+                        finalOutput = "7"
+                    )
+                )
+            ),
+            Lesson(
+                id = "tic-l4",
+                courseId = "thinking-in-code",
+                title = "Debugging Simple Logic",
+                description = "Find mismatches between what you meant and what you wrote.",
+                content = "Debugging starts by comparing expected behavior to actual behavior.",
+                order = 3,
+                example = "If login always fails, check whether you compare the right fields and types.",
+                activities = listOf(
+                    ActivityItem(
+                        id = "tic-l4-a1",
+                        lessonId = "tic-l4",
+                        type = ActivityType.DEBUG_CODE,
+                        prompt = "The program should print PASS for score = 60. What should be fixed?",
+                        difficultyLabel = "Debug reasoning",
+                        codeSnippet = "score = 60\nif score > 60:\n    print(\"PASS\")\nelse:\n    print(\"REVIEW\")",
+                        options = listOf(
+                            "Change score > 60 to score >= 60",
+                            "Change print(\"PASS\") to print(\"REVIEW\")",
+                            "Delete the else block",
+                            "Set score = 0"
+                        ),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Nice catch. The boundary value 60 must be included.",
+                        incorrectFeedback = "Check the boundary condition again.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Read the requirement",
+                                explanation = "\"At least 60\" means 60 should pass.",
+                                miniVisualHint = ">= includes 60"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Inspect the comparison",
+                                explanation = "Using > 60 excludes 60, which causes the mismatch."
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Apply the minimal fix",
+                                explanation = "Use >= 60 so the logic matches the requirement."
+                            )
+                        ),
+                        finalResult = "Boundary bug fixed: score >= 60.",
+                        finalOutput = null
+                    )
+                )
+            )
+        )
+    )
+
+    private fun courseProgrammingWithVariables(): Course = Course(
+        id = "programming-variables",
+        title = "Programming with Variables",
+        description = "Understand how data is stored, named, and reused.",
+        order = 1,
+        icon = "📦",
+        lessons = listOf(
+            Lesson(
+                id = "pvar-l1",
+                courseId = "programming-variables",
+                title = "What is a Variable?",
+                description = "A named box that holds a value you can reuse.",
+                content = "A variable stores a value under a name so you can read or update it later.",
+                order = 0,
+                example = "score = 0 then score = score + 10 after a correct answer.",
+                activities = listOf(
+                    ActivityItem(
+                        id = "pvar-l1-a1",
+                        lessonId = "pvar-l1",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What will be printed?",
+                        difficultyLabel = "Core concept",
+                        codeSnippet = "coins = 3\ncoins = coins + 2\nprint(coins)",
+                        options = listOf("3", "2", "5", "32"),
+                        correctAnswerIndex = 2,
+                        correctFeedback = "Correct. The variable updates to 5.",
+                        incorrectFeedback = "Track how coins changes line by line.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Initial value", explanation = "coins starts at 3."),
+                            ProcessStep(stepNumber = 2, title = "Update", explanation = "coins + 2 gives 5, then coins becomes 5."),
+                            ProcessStep(stepNumber = 3, title = "Print", explanation = "print(coins) shows 5.")
+                        ),
+                        finalResult = "The output is 5.",
+                        finalOutput = "5"
+                    )
+                )
+            ),
+            Lesson(
+                id = "pvar-l2",
+                courseId = "programming-variables",
+                title = "Naming Variables",
+                description = "Pick clear names so logic is easy to follow.",
+                content = "Names should describe the meaning of the data—like userScore, not just x—unless the context is tiny.",
+                order = 1,
+                activities = listOf(
+                    ActivityItem(
+                        id = "pvar-l2-a1",
+                        lessonId = "pvar-l2",
+                        type = ActivityType.DEBUG_CODE,
+                        prompt = "Which variable name best improves readability for a user's points?",
+                        difficultyLabel = "Naming practice",
+                        codeSnippet = "p = 120\nprint(p)",
+                        options = listOf("p", "u", "userPoints", "z1"),
+                        correctAnswerIndex = 2,
+                        correctFeedback = "Yes. Clear names make code easier to understand.",
+                        incorrectFeedback = "Choose the name that explains the data meaning.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Look at the value meaning", explanation = "120 refers to points, not a random number."),
+                            ProcessStep(stepNumber = 2, title = "Prefer descriptive names", explanation = "userPoints communicates purpose directly."),
+                            ProcessStep(stepNumber = 3, title = "Avoid vague letters", explanation = "Single letters hide intent outside math contexts.")
+                        ),
+                        finalResult = "Best variable name: userPoints.",
+                        finalOutput = null
+                    )
+                )
+            ),
+            Lesson(
+                id = "pvar-l3",
+                courseId = "programming-variables",
+                title = "Data Types",
+                description = "Different kinds of data behave differently in operations.",
+                content = "Numbers, text, and true/false behave differently. Types help the computer apply the right rules.",
+                order = 2,
+                activities = listOf(
+                    ActivityItem(
+                        id = "pvar-l3-a1",
+                        lessonId = "pvar-l3",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What does this print?",
+                        difficultyLabel = "Type awareness",
+                        codeSnippet = "a = \"5\"\nb = \"2\"\nprint(a + b)",
+                        options = listOf("7", "52", "Error", "5 2"),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct. Strings concatenate into \"52\".",
+                        incorrectFeedback = "Both values are text, so + joins them.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Check the quotes", explanation = "Quoted values are strings."),
+                            ProcessStep(stepNumber = 2, title = "Apply string +", explanation = "For strings, + means join, not arithmetic."),
+                            ProcessStep(stepNumber = 3, title = "Compute result", explanation = "\"5\" + \"2\" becomes \"52\".")
+                        ),
+                        finalResult = "The output is 52.",
+                        finalOutput = "52"
+                    )
+                )
+            ),
+            Lesson(
+                id = "pvar-l4",
+                courseId = "programming-variables",
+                title = "Updating Values",
+                description = "Variables can change as your program runs.",
+                content = "Assignment updates what a name points to.",
+                order = 3,
+                activities = listOf(
+                    ActivityItem(
+                        id = "pvar-l4-a1",
+                        lessonId = "pvar-l4",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What is the final output?",
+                        difficultyLabel = "State tracking",
+                        codeSnippet = "lives = 3\nlives = lives - 1\nlives = lives - 1\nprint(lives)",
+                        options = listOf("3", "2", "1", "0"),
+                        correctAnswerIndex = 2,
+                        correctFeedback = "Correct. Lives decreases from 3 to 1.",
+                        incorrectFeedback = "Trace each assignment update in order.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Start", explanation = "lives = 3"),
+                            ProcessStep(stepNumber = 2, title = "First update", explanation = "After -1, lives = 2"),
+                            ProcessStep(stepNumber = 3, title = "Second update", explanation = "After another -1, lives = 1")
+                        ),
+                        finalResult = "The output is 1.",
+                        finalOutput = "1"
+                    )
+                )
+            )
+        )
+    )
+
+    private fun courseThinkingInPython(): Course = Course(
+        id = "thinking-python",
+        title = "Thinking in Python",
+        description = "Start reading and writing simple Python-style logic.",
+        order = 2,
+        icon = "🐍",
+        lessons = listOf(
+            Lesson(
+                id = "tp-l1",
+                courseId = "thinking-python",
+                title = "Python Syntax Basics",
+                description = "Indentation and colons shape how blocks run.",
+                content = "Python uses indentation to group statements.",
+                order = 0,
+                activities = listOf(
+                    ActivityItem(
+                        id = "tp-l1-a1",
+                        lessonId = "tp-l1",
+                        type = ActivityType.DEBUG_CODE,
+                        prompt = "Which line is required to make this Python if-block valid?",
+                        difficultyLabel = "Syntax basics",
+                        codeSnippet = "score = 10\nif score > 5\n    print(\"ok\")",
+                        options = listOf(
+                            "Add : after if score > 5",
+                            "Remove indentation from print",
+                            "Change score to a string",
+                            "Delete print"
+                        ),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct. Python if statements need a colon.",
+                        incorrectFeedback = "Look at Python block syntax after conditions.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Find syntax marker", explanation = "Python uses : to start a block."),
+                            ProcessStep(stepNumber = 2, title = "Keep indentation", explanation = "Indented lines belong to the if block."),
+                            ProcessStep(stepNumber = 3, title = "Apply fix", explanation = "if score > 5: is the valid header.")
+                        ),
+                        finalResult = "Fixed syntax: add colon after condition.",
+                        finalOutput = null
+                    )
+                )
+            ),
+            Lesson(
+                id = "tp-l2",
+                courseId = "thinking-python",
+                title = "Simple Control Flow",
+                description = "if / else routes your program based on conditions.",
+                content = "Control flow chooses which lines run next.",
+                order = 1,
+                activities = listOf(
+                    ActivityItem(
+                        id = "tp-l2-a1",
+                        lessonId = "tp-l2",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What will be printed?",
+                        difficultyLabel = "Control flow trace",
+                        codeSnippet = "temp = 31\nif temp > 30:\n    print(\"hot\")\nelse:\n    print(\"cool\")",
+                        options = listOf("hot", "cool", "31", "error"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct. Condition is true, so \"hot\" prints.",
+                        incorrectFeedback = "Check whether temp > 30 is true or false.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Evaluate condition", explanation = "31 > 30 is true."),
+                            ProcessStep(stepNumber = 2, title = "Choose branch", explanation = "True means run the if branch."),
+                            ProcessStep(stepNumber = 3, title = "Output", explanation = "The program prints hot.")
+                        ),
+                        finalResult = "The output is hot.",
+                        finalOutput = "hot"
+                    )
+                )
+            )
+        )
+    )
+
+    private fun courseProgrammingWithFunctions(): Course = Course(
+        id = "programming-functions",
+        title = "Programming with Functions",
+        description = "Learn how to organize reusable blocks of code.",
+        order = 3,
+        icon = "🔧",
+        lessons = listOf(
+            Lesson(
+                id = "pf-l1",
+                courseId = "programming-functions",
+                title = "Why Functions?",
+                description = "Pack logic you can call from many places.",
+                content = "Functions reduce repetition and hide detail behind a clear name.",
+                order = 0,
+                activities = listOf(
+                    ActivityItem(
+                        id = "pf-l1-a1",
+                        lessonId = "pf-l1",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What gets printed?",
+                        difficultyLabel = "Function basics",
+                        codeSnippet = "def greet():\n    print(\"Hello\")\n\ngreet()",
+                        options = listOf("Hello", "greet", "Nothing", "Error"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct. Calling greet() prints Hello.",
+                        incorrectFeedback = "A function runs only when it is called.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Define function", explanation = "greet stores reusable steps."),
+                            ProcessStep(stepNumber = 2, title = "Call function", explanation = "greet() executes the function body."),
+                            ProcessStep(stepNumber = 3, title = "Observe output", explanation = "The printed output is Hello.")
+                        ),
+                        finalResult = "The output is Hello.",
+                        finalOutput = "Hello"
+                    )
+                )
+            ),
+            Lesson(
+                id = "pf-l2",
+                courseId = "programming-functions",
+                title = "Parameters and Return",
+                description = "Send data in, get results out.",
+                content = "Parameters act as inputs; return sends a result back to the caller.",
+                order = 1,
+                activities = listOf(
+                    ActivityItem(
+                        id = "pf-l2-a1",
+                        lessonId = "pf-l2",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What does this print?",
+                        difficultyLabel = "Inputs and return",
+                        codeSnippet = "def double(x):\n    return x * 2\n\nprint(double(4))",
+                        options = listOf("2", "4", "8", "44"),
+                        correctAnswerIndex = 2,
+                        correctFeedback = "Correct. double(4) returns 8.",
+                        incorrectFeedback = "Trace parameter x and the return expression.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Pass input", explanation = "x receives 4."),
+                            ProcessStep(stepNumber = 2, title = "Compute return", explanation = "x * 2 becomes 8."),
+                            ProcessStep(stepNumber = 3, title = "Print result", explanation = "print(double(4)) shows 8.")
+                        ),
+                        finalResult = "The output is 8.",
+                        finalOutput = "8"
+                    )
+                )
+            )
+        )
+    )
+
+    private fun courseAlgorithmicThinking(): Course = Course(
+        id = "algorithmic-thinking",
+        title = "Algorithmic Thinking",
+        description = "Practice step-by-step problem solving.",
+        order = 4,
+        icon = "🧭",
+        lessons = listOf(
+            Lesson(
+                id = "alg-l1",
+                courseId = "algorithmic-thinking",
+                title = "Breaking Down Problems",
+                description = "Split big goals into smaller checks and steps.",
+                content = "Algorithms are careful sequences of steps.",
+                order = 0,
+                activities = listOf(
+                    ActivityItem(
+                        id = "alg-l1-a1",
+                        lessonId = "alg-l1",
+                        type = ActivityType.DEBUG_CODE,
+                        prompt = "To count from 1 to 3, which step is missing?",
+                        difficultyLabel = "Algorithm steps",
+                        codeSnippet = "count = 1\nwhile count <= 3:\n    print(count)\n    # missing line",
+                        options = listOf(
+                            "count = count + 1",
+                            "count = 1",
+                            "print(\"done\")",
+                            "while True:"
+                        ),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct. Incrementing count advances the loop.",
+                        incorrectFeedback = "The loop needs a step that moves toward exit.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Start value", explanation = "count begins at 1."),
+                            ProcessStep(stepNumber = 2, title = "Repeat condition", explanation = "Loop continues while count <= 3."),
+                            ProcessStep(stepNumber = 3, title = "Progress step", explanation = "count = count + 1 prevents infinite loop.")
+                        ),
+                        finalResult = "Missing line: count = count + 1.",
+                        finalOutput = null
+                    )
+                )
+            ),
+            Lesson(
+                id = "alg-l2",
+                courseId = "algorithmic-thinking",
+                title = "Tracing Examples",
+                description = "Walk through data by hand before coding.",
+                content = "Tracing builds intuition and catches mistakes early.",
+                order = 1,
+                activities = listOf(
+                    ActivityItem(
+                        id = "alg-l2-a1",
+                        lessonId = "alg-l2",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What is the final value of total?",
+                        difficultyLabel = "Tracing practice",
+                        codeSnippet = "total = 0\nfor n in [1, 2, 3]:\n    total = total + n\nprint(total)",
+                        options = listOf("3", "5", "6", "123"),
+                        correctAnswerIndex = 2,
+                        correctFeedback = "Correct. total accumulates to 6.",
+                        incorrectFeedback = "Trace total after each loop iteration.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Initialize", explanation = "total starts at 0."),
+                            ProcessStep(stepNumber = 2, title = "Accumulate", explanation = "0+1=1, then 1+2=3, then 3+3=6."),
+                            ProcessStep(stepNumber = 3, title = "Output", explanation = "The program prints 6.")
+                        ),
+                        finalResult = "The output is 6.",
+                        finalOutput = "6"
+                    )
+                )
+            )
+        )
+    )
+
+    private fun courseCsFundamentals(): Course = Course(
+        id = "cs-fundamentals",
+        title = "Computer Science Fundamentals",
+        description = "Explore basic concepts behind computers and programs.",
+        order = 5,
+        icon = "💻",
+        lessons = listOf(
+            Lesson(
+                id = "cs-l1",
+                courseId = "cs-fundamentals",
+                title = "How Computers Store Data",
+                description = "Bits, bytes, and memory in beginner terms.",
+                content = "At the lowest level, information is stored as bits.",
+                order = 0,
+                activities = listOf(
+                    ActivityItem(
+                        id = "cs-l1-a1",
+                        lessonId = "cs-l1",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "A byte contains how many bits?",
+                        difficultyLabel = "CS basics",
+                        codeSnippet = "# quick fact check\nbits_in_byte = 8\nprint(bits_in_byte)",
+                        options = listOf("2", "4", "8", "16"),
+                        correctAnswerIndex = 2,
+                        correctFeedback = "Correct. 1 byte = 8 bits.",
+                        incorrectFeedback = "Remember the standard unit mapping.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Identify unit", explanation = "The question asks byte to bit conversion."),
+                            ProcessStep(stepNumber = 2, title = "Recall definition", explanation = "By convention, one byte stores 8 bits."),
+                            ProcessStep(stepNumber = 3, title = "Confirm output", explanation = "The snippet prints 8.")
+                        ),
+                        finalResult = "One byte contains 8 bits.",
+                        finalOutput = "8"
+                    )
+                )
+            ),
+            Lesson(
+                id = "cs-l2",
+                courseId = "cs-fundamentals",
+                title = "Programs and the CPU",
+                description = "Fetch, decode, execute—simplified view.",
+                content = "Processors execute instructions stored in memory.",
+                order = 1,
+                activities = listOf(
+                    ActivityItem(
+                        id = "cs-l2-a1",
+                        lessonId = "cs-l2",
+                        type = ActivityType.DEBUG_CODE,
+                        prompt = "Which stage comes after Fetch in the CPU cycle?",
+                        difficultyLabel = "Execution cycle",
+                        codeSnippet = "CPU cycle:\n1) Fetch\n2) ?\n3) Execute",
+                        options = listOf("Shutdown", "Decode", "Sleep", "Compile"),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct. The CPU decodes before execution.",
+                        incorrectFeedback = "Think of the standard fetch-decode-execute sequence.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Fetch", explanation = "CPU reads instruction from memory."),
+                            ProcessStep(stepNumber = 2, title = "Decode", explanation = "CPU interprets what the instruction means."),
+                            ProcessStep(stepNumber = 3, title = "Execute", explanation = "CPU performs the operation.")
+                        ),
+                        finalResult = "Correct order: Fetch -> Decode -> Execute.",
+                        finalOutput = null
+                    )
+                )
+            )
+        )
+    )
+
+    private fun courseNeuralNetworks(): Course = Course(
+        id = "neural-intro",
+        title = "Introduction to Neural Networks",
+        description = "Understand the basic idea of how simple AI models learn.",
+        order = 6,
+        icon = "🧠",
+        lessons = listOf(
+            Lesson(
+                id = "nn-l1",
+                courseId = "neural-intro",
+                title = "Neurons and Layers",
+                description = "A cartoon view of stacked simple units.",
+                content = "Neural networks combine many small computations.",
+                order = 0,
+                activities = listOf(
+                    ActivityItem(
+                        id = "nn-l1-a1",
+                        lessonId = "nn-l1",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "In a simple network, where does data enter first?",
+                        difficultyLabel = "NN basics",
+                        codeSnippet = "layers = [\"input\", \"hidden\", \"output\"]\nprint(layers[0])",
+                        options = listOf("hidden", "output", "input", "loss"),
+                        correctAnswerIndex = 2,
+                        correctFeedback = "Correct. Data enters through the input layer.",
+                        incorrectFeedback = "Look at the first layer in the sequence.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Read layer order", explanation = "The list starts with input."),
+                            ProcessStep(stepNumber = 2, title = "Index access", explanation = "layers[0] selects the first item."),
+                            ProcessStep(stepNumber = 3, title = "Output", explanation = "Printed value is input.")
+                        ),
+                        finalResult = "The first layer is input.",
+                        finalOutput = "input"
+                    )
+                )
+            ),
+            Lesson(
+                id = "nn-l2",
+                courseId = "neural-intro",
+                title = "Learning from Examples",
+                description = "Adjust weights to reduce mistakes.",
+                content = "Training tweaks parameters so predictions match labels.",
+                order = 1,
+                activities = listOf(
+                    ActivityItem(
+                        id = "nn-l2-a1",
+                        lessonId = "nn-l2",
+                        type = ActivityType.DEBUG_CODE,
+                        prompt = "What is the main goal during training?",
+                        difficultyLabel = "Training intuition",
+                        codeSnippet = "for each epoch:\n    predict\n    compare with label\n    update weights",
+                        options = listOf(
+                            "Increase error each epoch",
+                            "Reduce prediction error over time",
+                            "Randomize all labels",
+                            "Delete the dataset"
+                        ),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct. Training aims to reduce error.",
+                        incorrectFeedback = "Focus on why weights are updated after comparison.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Predict", explanation = "Model outputs a guess."),
+                            ProcessStep(stepNumber = 2, title = "Measure error", explanation = "Compare guess vs correct label."),
+                            ProcessStep(stepNumber = 3, title = "Update weights", explanation = "Adjustments aim to lower future error.")
+                        ),
+                        finalResult = "Training goal: reduce prediction error.",
+                        finalOutput = null
+                    )
+                )
+            )
+        )
+    )
 }

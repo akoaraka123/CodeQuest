@@ -38,8 +38,8 @@ fun CodeQuestApp() {
             }
         }
 
-        AppScreen.LESSON -> CodeQuestLessonScreen(appState)
-        AppScreen.CHALLENGE -> CodeQuestChallengeScreen(appState)
+        AppScreen.COURSE_DETAIL -> CodeQuestCourseDetailScreen(appState)
+        AppScreen.LESSON_ACTIVITY -> CodeQuestLessonActivityScreen(appState)
         AppScreen.RESULT -> CodeQuestResultScreen(appState)
         AppScreen.ALL_EARNED_BADGES -> AllEarnedBadgesScreen(appState)
         AppScreen.ALL_LOCKED_BADGES -> AllLockedBadgesScreen(appState)

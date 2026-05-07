@@ -50,23 +50,27 @@ fun CodeQuestHomeScreen(
     selectedTab: AppTab,
     onTabSelected: (AppTab) -> Unit
 ) {
-    val quests = appState.getQuests()
-    val activeQuest = appState.getCurrentQuest()
-    val campusItems = quests.map { quest ->
+    appState.ensureDefaultActiveCourse()
+    val courses = appState.getCourses()
+    val activeCourse = appState.getActiveCourseForHome()
+    val targetLesson = appState.getActiveTargetLesson()
+    val completedInActive = activeCourse?.lessons?.count { it.id in appState.completedLessonIds } ?: 0
+    val totalInActive = activeCourse?.lessons?.size ?: 0
+    val campusItems = courses.map { course ->
         val statusType = when {
-            appState.completedQuestIds.contains(quest.id) -> CampusStatus.COMPLETED
-            appState.unlockedQuestIds.contains(quest.id) -> CampusStatus.ACTIVE
+            course.id in appState.completedCourseIds -> CampusStatus.COMPLETED
+            course.id in appState.unlockedCourseIds -> CampusStatus.ACTIVE
             else -> CampusStatus.LOCKED
         }
         CampusCardUi(
-            id = quest.id,
-            title = quest.title,
+            id = course.id,
+            title = course.title,
             status = when (statusType) {
                 CampusStatus.COMPLETED -> "Completed"
-                CampusStatus.ACTIVE -> "Active"
+                CampusStatus.ACTIVE -> "Available"
                 CampusStatus.LOCKED -> "Locked"
             },
-            icon = quest.icon,
+            icon = course.icon,
             statusType = statusType,
             isEnabled = statusType != CampusStatus.LOCKED
         )
@@ -77,8 +81,9 @@ fun CodeQuestHomeScreen(
         .take(3)
         .map {
             val accent = when (it.first.id) {
-                "streak-master" -> BadgeGold
-                "logic-learner" -> PrimaryPurple
+                "first-steps", "thinking-coder", "variable-starter" -> ActiveCyan
+                "function-builder", "algorithm-explorer" -> PrimaryPurple
+                "cs-rookie", "neural-beginner" -> BadgeGold
                 else -> ActiveCyan
             }
             BadgeUi(it.first.title, it.first.description, it.first.icon, accent)
@@ -120,8 +125,8 @@ fun CodeQuestHomeScreen(
                     Spacer(modifier = Modifier.height(14.dp))
                     GradientButton(
                         text = "Continue Quest",
-                        enabled = activeQuest != null,
-                        onClick = { appState.continueActiveQuest() }
+                        enabled = activeCourse != null,
+                        onClick = { appState.continueLearning() }
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     SectionHeader(
@@ -131,19 +136,26 @@ fun CodeQuestHomeScreen(
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     CurrentMissionCard(
-                        missionTitle = activeQuest?.title ?: "No active quest yet",
-                        missionDescription = activeQuest?.description ?: "Add quest content to LocalContentRepository to begin.",
-                        missionProgressText = if (activeQuest != null) "Tap to open lesson flow" else "No mission yet",
-                        onClick = { if (activeQuest != null) appState.startQuest(activeQuest.id) }
+                        missionTitle = activeCourse?.title ?: "Thinking in Code",
+                        missionDescription = targetLesson?.let { "Lesson: ${it.title}" }
+                            ?: "Open the Learning Path and start your first lesson.",
+                        missionProgressText = if (activeCourse != null && totalInActive > 0) {
+                            "Progress: $completedInActive of $totalInActive lessons completed"
+                        } else {
+                            "Tap to continue"
+                        },
+                        onClick = { appState.continueLearning() },
+                        progressSegments = totalInActive.coerceAtLeast(1),
+                        progressFilled = completedInActive.coerceIn(0, totalInActive.coerceAtLeast(1))
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     SectionHeader(title = "Cyber Campus Map")
                     Spacer(modifier = Modifier.height(10.dp))
                     if (campusItems.isEmpty()) {
-                        Text("No quests available yet", color = TextMuted)
+                        Text("No courses available yet", color = TextMuted)
                     } else {
                         CampusMapSection(campusItems) { item ->
-                            if (item.isEnabled) appState.startQuest(item.id)
+                            if (item.isEnabled) appState.openCourseDetail(item.id)
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))

@@ -120,15 +120,15 @@ fun MainProfileCard(
 @Composable
 fun ProfileStatsRow(
     totalXp: Int,
-    questsCompleted: Int,
-    badgesEarned: Int,
-    streakDays: Int
+    lessonsCompleted: Int,
+    coursesCompleted: Int,
+    badgesEarned: Int
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         ProfileStatCard("💎", totalXp.toString(), "Total XP", ActiveCyan, Modifier.weight(1f))
-        ProfileStatCard("✅", questsCompleted.toString(), "Quests\nCompleted", CompletedGreen, Modifier.weight(1f))
-        ProfileStatCard("🛡️", badgesEarned.toString(), "Badges\nEarned", PrimaryPurple, Modifier.weight(1f))
-        ProfileStatCard("🔥", streakDays.toString(), "Streak Days", BadgeGold, Modifier.weight(1f))
+        ProfileStatCard("📚", lessonsCompleted.toString(), "Lessons\nDone", CompletedGreen, Modifier.weight(1f))
+        ProfileStatCard("🎓", coursesCompleted.toString(), "Courses\nDone", PrimaryPurple, Modifier.weight(1f))
+        ProfileStatCard("🛡️", badgesEarned.toString(), "Badges\nEarned", BadgeGold, Modifier.weight(1f))
     }
 }
 

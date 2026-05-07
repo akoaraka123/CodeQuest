@@ -56,8 +56,9 @@ fun CodeQuestBadgesScreen(
         .take(3)
         .map {
             val accent = when (it.first.id) {
-                "streak-master" -> BadgeGold
-                "logic-learner" -> PrimaryPurple
+                "first-steps", "thinking-coder", "variable-starter" -> ActiveCyan
+                "function-builder", "algorithm-explorer" -> PrimaryPurple
+                "cs-rookie", "neural-beginner" -> BadgeGold
                 else -> ActiveCyan
             }
             EarnedBadgeUi(it.first.title, it.first.description, it.first.icon, accent)

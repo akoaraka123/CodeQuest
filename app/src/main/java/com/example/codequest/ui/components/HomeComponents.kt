@@ -199,7 +199,9 @@ fun CurrentMissionCard(
     missionTitle: String,
     missionDescription: String,
     missionProgressText: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    progressSegments: Int = 5,
+    progressFilled: Int = 0
 ) {
     GlassCard {
         Row(
@@ -236,7 +238,10 @@ fun CurrentMissionCard(
                     fontSize = 12.sp
                 )
                 Spacer(modifier = Modifier.height(10.dp))
-                SegmentedProgress(segments = 5, active = 3)
+                SegmentedProgress(
+                    segments = progressSegments.coerceAtLeast(1),
+                    active = progressFilled.coerceIn(0, progressSegments.coerceAtLeast(1))
+                )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(text = missionProgressText, color = ActiveCyan, fontSize = 12.sp)
             }
