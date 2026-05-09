@@ -23,7 +23,9 @@ data class ActivityItem(
     val processStepsWhenIncorrect: List<ProcessStep>? = null,
     val finalResult: String,
     val finalOutput: String? = null,
-    val xpReward: Int = 20
+    val xpReward: Int = 20,
+    /** When true, correct answers still enter guided process steps before the final-result screen. */
+    val requiresProcessRevealBeforeFinal: Boolean = false
 )
 
 fun ActivityItem.effectiveProcessSteps(answerCorrect: Boolean): List<ProcessStep> =
@@ -37,3 +39,7 @@ fun ActivityItem.requiresMultipleChoice(): Boolean =
     type == ActivityType.MULTIPLE_CHOICE ||
         type == ActivityType.OUTPUT_TRACING ||
         type == ActivityType.DEBUG_CODE
+
+/** Thinking in Code — Lesson 1 "What is a Program?" (MC-only custom flow). */
+fun ActivityItem.isTicLesson1MultipleChoice(): Boolean =
+    lessonId == "tic-l1" && requiresMultipleChoice()

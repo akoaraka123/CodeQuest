@@ -59,6 +59,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codequest.model.ActivityItem
 import com.example.codequest.model.ActivityType
+import com.example.codequest.model.effectiveProcessSteps
+import com.example.codequest.model.isTicLesson1MultipleChoice
 import com.example.codequest.model.CommandSequencePlayback
 import com.example.codequest.model.Direction
 import com.example.codequest.model.GridPosition
@@ -223,6 +225,18 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                     activity.codeSnippet?.let { snippet ->
                         item { GlassCard { CodeBlockCard(code = snippet) } }
                     }
+                    if (activity.isTicLesson1MultipleChoice()) {
+                        item {
+                            val left = (3 - appState.lessonOneWrongAttempts).coerceAtLeast(0)
+                            Text(
+                                text = "Attempts left: $left",
+                                color = ActiveCyan,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.3.sp
+                            )
+                        }
+                    }
                     items(count = activity.options.size) { index ->
                         val selected = appState.pendingSubmittedIndex == index
                         val border = if (selected) ActiveCyan else CardBorder
@@ -254,23 +268,130 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                     TaskHeaderSection(activity = activity)
                 }
                 item {
+                    val l1mc = activity.isTicLesson1MultipleChoice()
+                    val attempts = appState.lessonOneWrongAttempts
+                    val depleted = l1mc && !appState.pendingAnswerCorrect && attempts >= 3
+                    val reasonBody = when {
+                        depleted ->
+                            "You have used all attempts.\n\n${activity.incorrectFeedback}"
+                        appState.pendingAnswerCorrect -> activity.correctFeedback
+                        else -> activity.incorrectFeedback
+                    }
                     FeedbackCard(
                         correct = appState.pendingAnswerCorrect,
-                        reasonBody = if (appState.pendingAnswerCorrect) {
-                            activity.correctFeedback
-                        } else {
-                            activity.incorrectFeedback
-                        },
+                        reasonBody = reasonBody,
                         isCommandSequence = activity.type == ActivityType.COMMAND_SEQUENCE
                     )
                 }
-                item {
-                    GradientButton(text = "Show Process") {
-                        val isCmdSeq = activity.type == ActivityType.COMMAND_SEQUENCE
-                        if (!isCmdSeq && revealSteps.isEmpty()) {
-                            appState.showFinalResultState()
+                if (activity.isTicLesson1MultipleChoice()) {
+                    val attempts = appState.lessonOneWrongAttempts
+                    if (!appState.pendingAnswerCorrect && attempts < 3) {
+                        item {
+                            val left = (3 - attempts).coerceAtLeast(0)
+                            Text(
+                                text = "Attempts left: $left",
+                                color = ActiveCyan,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                    item {
+                        when {
+                            appState.pendingAnswerCorrect -> {
+                                val lastQ = appState.currentActivityIndex >= activities.lastIndex
+                                GradientButton(text = if (lastQ) "Finish lesson" else "Next Question") {
+                                    appState.lesson1ProceedAfterCorrectFeedback()
+                                }
+                            }
+                            attempts >= 3 -> {
+                                GradientButton(text = "View Correct Answer") {
+                                    appState.lesson1OpenCorrectAnswerReveal()
+                                }
+                            }
+                            else -> {
+                                GradientButton(text = "Try Again") {
+                                    appState.lesson1TryAgainAfterWrong()
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    item {
+                        if (appState.pendingAnswerCorrect) {
+                            val walkthroughSteps =
+                                activity.effectiveProcessSteps(answerCorrect = true)
+                            val continueToWalkthrough =
+                                activity.requiresProcessRevealBeforeFinal && walkthroughSteps.isNotEmpty()
+                            GradientButton(text = "Continue") {
+                                if (continueToWalkthrough) {
+                                    appState.showProcessRevealFromFeedback()
+                                } else {
+                                    appState.showFinalResultState()
+                                }
+                            }
                         } else {
-                            appState.showProcessRevealFromFeedback()
+                            GradientButton(text = "View Correct Answer") {
+                                appState.showProcessRevealFromFeedback()
+                            }
+                        }
+                    }
+                }
+            }
+
+            LessonInteractionState.LESSON1_ANSWER_REVEAL -> {
+                if (!activity.isTicLesson1MultipleChoice()) {
+                    item {
+                        Text(
+                            "Continue the lesson from the previous step.",
+                            color = TextMuted,
+                            fontSize = 14.sp
+                        )
+                    }
+                } else {
+                    item {
+                        TaskHeaderSection(activity = activity, muted = true)
+                    }
+                    item {
+                        GlassCard {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text(
+                                    text = "Correct answer",
+                                    color = ActiveCyan,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.6.sp
+                                )
+                                val idx = activity.correctAnswerIndex
+                                if (idx in activity.options.indices) {
+                                    Text(
+                                        text = activity.options[idx],
+                                        color = TextPrimary,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        lineHeight = 22.sp
+                                    )
+                                }
+                                Text(
+                                    text = "Explanation",
+                                    color = ActiveCyan,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.6.sp
+                                )
+                                Text(
+                                    text = activity.finalResult,
+                                    color = TextMuted,
+                                    fontSize = 14.sp,
+                                    lineHeight = 20.sp
+                                )
+                            }
+                        }
+                    }
+                    item {
+                        val lastQ = appState.currentActivityIndex >= activities.lastIndex
+                        GradientButton(text = if (lastQ) "Finish lesson" else "Next Question") {
+                            appState.lesson1ProceedAfterRevealExplanation()
                         }
                     }
                 }

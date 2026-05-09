@@ -165,9 +165,10 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
                     val locked = lesson.id !in appState.unlockedLessonIds
                     val done = lesson.id in appState.completedLessonIds
                     val chosen = lesson.id == focusLesson?.id
-                    val subtitle = lesson.activities.take(2).joinToString(" • ") { act ->
-                        act.prompt.take(48) + if (act.prompt.length > 48) "…" else ""
-                    }
+                    val subtitle = lesson.pathCardSubtitle?.takeIf { it.isNotBlank() }
+                        ?: lesson.activities.take(2).joinToString(" • ") { act ->
+                            act.prompt.take(48) + if (act.prompt.length > 48) "…" else ""
+                        }
                     LessonSelectableRow(
                         indexLabel = "Lesson ${idx + 1}",
                         title = lesson.title,

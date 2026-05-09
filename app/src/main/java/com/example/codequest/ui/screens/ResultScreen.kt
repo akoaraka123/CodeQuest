@@ -3,6 +3,7 @@ package com.example.codequest.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +28,8 @@ import com.example.codequest.state.CodeQuestAppState
 import com.example.codequest.ui.components.CodeQuestBackButton
 import com.example.codequest.ui.components.GlassCard
 import com.example.codequest.ui.components.GradientButton
+import com.example.codequest.ui.components.GoodEffortCelebrationOverlay
+import com.example.codequest.ui.components.PerfectScoreCelebrationOverlay
 import com.example.codequest.ui.theme.BackgroundEnd
 import com.example.codequest.ui.theme.BackgroundStart
 import com.example.codequest.ui.theme.CompletedGreen
@@ -32,17 +39,47 @@ import com.example.codequest.ui.theme.TextPrimary
 @Composable
 fun CodeQuestResultScreen(appState: CodeQuestAppState) {
     val result = appState.result
-    BackHandler { appState.goHome() }
-    Column(
+    val totalActs = result?.totalActivities ?: 0
+    val correctActs = result?.correctCount ?: 0
+    val isPerfectScore = totalActs > 0 && correctActs == totalActs
+    val isBelowPerfect = totalActs > 0 && correctActs < totalActs
+    var showPerfectCelebration by remember(result?.lessonId, result?.courseId, correctActs, totalActs) {
+        mutableStateOf(isPerfectScore)
+    }
+    var showGoodEffortCelebration by remember(result?.lessonId, result?.courseId, correctActs, totalActs) {
+        mutableStateOf(isBelowPerfect)
+    }
+
+    BackHandler {
+        if (appState.result != null) {
+            appState.returnToCourseDetailAfterLessonCompletion()
+        } else {
+            appState.goHome()
+        }
+    }
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(BackgroundStart, BackgroundEnd)))
-            .statusBarsPadding()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
         Row(modifier = Modifier.fillMaxWidth()) {
-            CodeQuestBackButton(onClick = { appState.goHome() }, isClose = true)
+            CodeQuestBackButton(
+                onClick = {
+                    if (appState.result != null) {
+                        appState.returnToCourseDetailAfterLessonCompletion()
+                    } else {
+                        appState.goHome()
+                    }
+                },
+                isClose = true
+            )
             Text(
                 "Lesson complete",
                 color = TextPrimary,
@@ -90,5 +127,22 @@ fun CodeQuestResultScreen(appState: CodeQuestAppState) {
         GradientButton(text = "Next lesson") { appState.resultContinueNextLesson() }
         GradientButton(text = "Learning Path") { appState.goToLearningPath() }
         GradientButton(text = "Review lesson") { appState.reviewCurrentLessonActivities() }
+        }
+
+        if (isPerfectScore) {
+            PerfectScoreCelebrationOverlay(
+                scoreText = "$correctActs / $totalActs",
+                visible = showPerfectCelebration,
+                modifier = Modifier.fillMaxSize(),
+                onAnimationFinished = { appState.returnToCourseDetailAfterLessonCompletion() }
+            )
+        } else if (isBelowPerfect) {
+            GoodEffortCelebrationOverlay(
+                scoreText = "$correctActs / $totalActs",
+                visible = showGoodEffortCelebration,
+                modifier = Modifier.fillMaxSize(),
+                onAnimationFinished = { appState.returnToCourseDetailAfterLessonCompletion() }
+            )
+        }
     }
 }

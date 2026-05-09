@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import com.example.codequest.data.LocalContentRepository
 import com.example.codequest.model.ActivityItem
 import com.example.codequest.model.ActivityType
+import com.example.codequest.model.isTicLesson1MultipleChoice
 import com.example.codequest.model.CommandSequencePlayback
 import com.example.codequest.model.PlaybackStepResult
 import com.example.codequest.model.playbackBoardConfig
@@ -128,6 +129,10 @@ class CodeQuestAppState {
         private set
 
     var lessonCorrectThisSession by mutableIntStateOf(0)
+        private set
+
+    /** Wrong Check submissions for Thinking in Code Lesson 1 MC (max 3); reset per question. */
+    var lessonOneWrongAttempts by mutableIntStateOf(0)
         private set
 
     var sessionXpEarned by mutableIntStateOf(0)
@@ -352,6 +357,7 @@ class CodeQuestAppState {
         currentActivityIndex = 0
         sessionXpEarned = 0
         lessonCorrectThisSession = 0
+        lessonOneWrongAttempts = 0
         resetInteractionForActivity()
         initCommandSlots()
         currentScreen = AppScreen.LESSON_ACTIVITY
@@ -447,6 +453,16 @@ class CodeQuestAppState {
 
     fun submitActivityCheck() {
         val a = getCurrentActivity() ?: return
+        if (a.isTicLesson1MultipleChoice()) {
+            isAnswerChecked = true
+            val correct = pendingSubmittedIndex >= 0 && pendingSubmittedIndex == a.correctAnswerIndex
+            pendingAnswerCorrect = correct
+            if (!correct) {
+                lessonOneWrongAttempts += 1
+            }
+            lessonInteractionState = LessonInteractionState.FEEDBACK
+            return
+        }
         isAnswerChecked = true
         pendingAnswerCorrect = when (a.type) {
             ActivityType.COMMAND_SEQUENCE ->
@@ -469,6 +485,7 @@ class CodeQuestAppState {
 
     fun showProcessRevealFromFeedback() {
         val a = getCurrentActivity()
+        if (a?.isTicLesson1MultipleChoice() == true) return
         if (a?.type == ActivityType.COMMAND_SEQUENCE) {
             commandPlaybackCommandsSnapshot = activityCommandSlots.mapNotNull { it }
             commandPlaybackUsesReferenceSolution = false
@@ -517,17 +534,46 @@ class CodeQuestAppState {
     }
 
     fun proceedAfterFinalResult() {
+        grantPendingCorrectActivityXpIfApplicable()
+        moveToNextLessonActivityOrCompleteBonus()
+    }
+
+    fun lesson1TryAgainAfterWrong() {
+        lessonInteractionState = LessonInteractionState.ACTIVITY
+        pendingSubmittedIndex = -1
+        pendingAnswerCorrect = false
+        isAnswerChecked = false
+    }
+
+    fun lesson1OpenCorrectAnswerReveal() {
+        lessonInteractionState = LessonInteractionState.LESSON1_ANSWER_REVEAL
+    }
+
+    fun lesson1ProceedAfterCorrectFeedback() {
+        grantPendingCorrectActivityXpIfApplicable()
+        moveToNextLessonActivityOrCompleteBonus()
+    }
+
+    /** After viewing the correct answer (no XP for failed attempt). */
+    fun lesson1ProceedAfterRevealExplanation() {
+        moveToNextLessonActivityOrCompleteBonus()
+    }
+
+    private fun grantPendingCorrectActivityXpIfApplicable() {
         val a = getCurrentActivity() ?: return
-        if (pendingAnswerCorrect) {
-            sessionXpEarned += a.xpReward
-            totalXP += a.xpReward
-            val cid = selectedCourseId ?: ""
-            courseLearningXp[cid] = ((courseLearningXp[cid] ?: 0) + a.xpReward).coerceAtMost(500)
-            lessonCorrectThisSession += 1
-            if (a.type == ActivityType.DEBUG_CODE) {
-                debugCorrectCount += 1
-            }
+        if (!pendingAnswerCorrect) return
+        sessionXpEarned += a.xpReward
+        totalXP += a.xpReward
+        val cid = selectedCourseId ?: ""
+        courseLearningXp[cid] = ((courseLearningXp[cid] ?: 0) + a.xpReward).coerceAtMost(500)
+        lessonCorrectThisSession += 1
+        if (a.type == ActivityType.DEBUG_CODE) {
+            debugCorrectCount += 1
         }
+    }
+
+    private fun moveToNextLessonActivityOrCompleteBonus() {
+        lessonOneWrongAttempts = 0
         val activities = getActivitiesForCurrentLesson()
         if (currentActivityIndex < activities.lastIndex) {
             currentActivityIndex += 1
@@ -582,6 +628,30 @@ class CodeQuestAppState {
         currentScreen = AppScreen.RESULT
     }
 
+    /**
+     * After the PERFECT / GOOD EFFORT animation (or skipping it), returns to this course's
+     * Course Detail lesson path — not Home.
+     */
+    fun returnToCourseDetailAfterLessonCompletion() {
+        val r = result ?: return
+        val course = getCourse(r.courseId) ?: return
+        activeCourseId = course.id
+        selectedCourseId = course.id
+        val next = LocalContentRepository.nextLessonInCourse(course.id, r.lessonId)
+        courseDetailFocusLessonId = when {
+            next != null && next.id in unlockedLessonIds -> next.id
+            else -> pickDefaultFocusLesson(course)
+        }
+        result = null
+        currentActivityIndex = 0
+        sessionXpEarned = 0
+        lessonCorrectThisSession = 0
+        lessonOneWrongAttempts = 0
+        selectedLessonId = null
+        resetInteractionForActivity()
+        currentScreen = AppScreen.COURSE_DETAIL
+    }
+
     private fun unlockNextLesson(courseId: String, completedLessonId: String) {
         val next = LocalContentRepository.nextLessonInCourse(courseId, completedLessonId)
         if (next != null) {
@@ -608,6 +678,7 @@ class CodeQuestAppState {
         resetInteractionForActivity()
         sessionXpEarned = 0
         lessonCorrectThisSession = 0
+        lessonOneWrongAttempts = 0
         selectedLessonId = null
         currentScreen = AppScreen.COURSE_DETAIL
     }
@@ -669,6 +740,7 @@ class CodeQuestAppState {
         currentActivityIndex = 0
         sessionXpEarned = 0
         lessonCorrectThisSession = 0
+        lessonOneWrongAttempts = 0
         resetInteractionForActivity()
         currentScreen = AppScreen.LESSON_ACTIVITY
     }

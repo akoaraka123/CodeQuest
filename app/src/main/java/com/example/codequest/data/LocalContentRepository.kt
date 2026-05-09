@@ -93,49 +93,199 @@ object LocalContentRepository {
                 id = "tic-l1",
                 courseId = "thinking-in-code",
                 title = "What is a Program?",
-                description = "See programs as precise instructions, not magic.",
-                content = "A program is a sequence of instructions that tells a computer what to do. " +
-                    "Think of it like a recipe: each step must be clear enough for something that takes everything literally.",
+                description = "Understand what a program is and how simple instructions can control a computer.",
+                content = "A computer program is a set of step-by-step instructions that a machine can follow. " +
+                    "Programs turn a goal into ordered actions—just like directions that must happen in sequence.",
                 order = 0,
-                example = "Print a greeting → read input → decide what to do next.",
+                example = "Question → answer → guided steps → recap before moving on.",
                 activities = listOf(
                     ActivityItem(
                         id = "tic-l1-a1",
                         lessonId = "tic-l1",
-                        type = ActivityType.DEBUG_CODE,
-                        prompt = "Which line best represents a computer program?",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "Which statement best describes a computer program?",
                         difficultyLabel = "Foundational skill",
-                        codeSnippet = "Pick the best definition:\nA) Hardware parts\nB) Step-by-step instructions",
                         options = listOf(
                             "A list of physical computer parts",
-                            "Step-by-step instructions for a computer to follow",
+                            "Step-by-step instructions a computer can follow",
                             "A social media post about technology",
                             "A cable that connects two screens"
                         ),
                         correctAnswerIndex = 1,
-                        correctFeedback = "Correct. Programs are logical instructions.",
-                        incorrectFeedback = "A program is software logic, not hardware.",
+                        correctFeedback = "Correct! A program is a set of instructions that tells a computer what to do.",
+                        incorrectFeedback = "Not quite. A program is not a physical part or a cable. Let's break it down.",
                         processSteps = listOf(
                             ProcessStep(
                                 stepNumber = 1,
-                                title = "Define program",
-                                explanation = "A program is instructions a machine can execute in order."
+                                title = "Think about what computers need",
+                                explanation = "Computers do not decide actions by themselves. They need clear instructions."
                             ),
                             ProcessStep(
                                 stepNumber = 2,
-                                title = "Exclude hardware terms",
-                                explanation = "Parts like cables/screens are hardware, not programs."
+                                title = "Understand what instructions do",
+                                explanation = "Instructions tell the computer what action to perform and in what order."
                             ),
                             ProcessStep(
                                 stepNumber = 3,
-                                title = "Pick precise wording",
-                                explanation = "Step-by-step instructions is the correct definition."
+                                title = "Connect it to a program",
+                                explanation = "A program is a group of instructions written to solve a task."
                             )
                         ),
-                        finalResult = "A program is step-by-step instructions for a computer to follow.",
-                        finalOutput = null
+                        finalResult = "A computer program is a set of step-by-step instructions that a computer can follow.",
+                        finalOutput = null,
+                        requiresProcessRevealBeforeFinal = false
+                    ),
+                    ActivityItem(
+                        id = "tic-l1-a2",
+                        lessonId = "tic-l1",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "Which example is most like a simple program?",
+                        difficultyLabel = "Foundational skill",
+                        options = listOf(
+                            "A recipe that lists steps for cooking rice",
+                            "A random picture saved on a phone",
+                            "A broken keyboard",
+                            "A phone charger"
+                        ),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! A recipe is similar to a program because it follows ordered steps.",
+                        incorrectFeedback = "Not quite. A simple program works like a set of ordered steps.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Look for ordered instructions",
+                                explanation = "A program has steps that must be followed in a clear order."
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Compare the choices",
+                                explanation = "A recipe gives instructions like wash rice, add water, cook, and serve."
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Match the idea",
+                                explanation = "That is similar to how a program tells a computer what to do step by step."
+                            )
+                        ),
+                        finalResult = "A recipe is most like a simple program because it follows ordered instructions.",
+                        finalOutput = null,
+                        requiresProcessRevealBeforeFinal = false
+                    ),
+                    ActivityItem(
+                        id = "tic-l1-a3",
+                        lessonId = "tic-l1",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "What does a program tell a computer to do?",
+                        difficultyLabel = "Foundational skill",
+                        options = listOf(
+                            "Ignore all commands",
+                            "Follow instructions to complete a task",
+                            "Turn into a human",
+                            "Stop using electricity"
+                        ),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct! A program gives instructions so the computer can complete a task.",
+                        incorrectFeedback = "Not quite. A program gives the computer actions to follow.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Identify the purpose of a program",
+                                explanation = "A program exists to make the computer do something useful."
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Understand the role of commands",
+                                explanation = "Commands are instructions that tell the computer what action to perform."
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Complete the idea",
+                                explanation = "When the instructions run together, they help complete a task."
+                            )
+                        ),
+                        finalResult = "A program tells a computer to follow instructions to complete a task.",
+                        finalOutput = null,
+                        requiresProcessRevealBeforeFinal = false
+                    ),
+                    ActivityItem(
+                        id = "tic-l1-a4",
+                        lessonId = "tic-l1",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "Why does the order of instructions matter in a program?",
+                        difficultyLabel = "Foundational skill",
+                        options = listOf(
+                            "Because computers follow instructions in sequence",
+                            "Because computers only read colors",
+                            "Because programs do not use logic",
+                            "Because order never matters"
+                        ),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! Computers usually follow instructions in the order they are written.",
+                        incorrectFeedback = "Not quite. The order matters because the computer follows steps one after another.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Think about sequence",
+                                explanation = "A sequence means one step happens after another."
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Apply it to programs",
+                                explanation = "If instructions are in the wrong order, the result may also be wrong."
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Simple example",
+                                explanation = "You cannot print a result before calculating it. The calculation must happen first."
+                            )
+                        ),
+                        finalResult = "The order matters because computers follow instructions in sequence.",
+                        finalOutput = null,
+                        requiresProcessRevealBeforeFinal = false
+                    ),
+                    ActivityItem(
+                        id = "tic-l1-a5",
+                        lessonId = "tic-l1",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "Which set of instructions is most complete for making the robot find the red target?",
+                        difficultyLabel = "Foundational skill",
+                        options = listOf(
+                            "Move forward, turn right, move forward, select red",
+                            "Select red, move forward, turn right",
+                            "Turn left, select red, move backward",
+                            "Move forward only"
+                        ),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! The steps are complete and ordered properly.",
+                        incorrectFeedback = "Not quite. The robot needs a complete and properly ordered sequence.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Start with movement",
+                                explanation = "The robot must first move from its starting position."
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Change direction",
+                                explanation = "The robot turns right to face the path toward the red target."
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Move to the target",
+                                explanation = "The robot moves forward again to reach the red target."
+                            ),
+                            ProcessStep(
+                                stepNumber = 4,
+                                title = "Select the target",
+                                explanation = "The robot can only select red after reaching the red tile."
+                            )
+                        ),
+                        finalResult = "The correct sequence is: move forward, turn right, move forward, select red.",
+                        finalOutput = null,
+                        requiresProcessRevealBeforeFinal = false
                     )
-                )
+                ),
+                pathCardSubtitle = "Understand what a program is and how instructions control a computer."
             ),
             Lesson(
                 id = "tic-l2",
