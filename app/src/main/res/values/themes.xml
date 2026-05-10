@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.CodeQuest" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+      Dark navy startup surface so cold launch / splash matches CodeQuest branding
+      (Material.Light defaults to a white window otherwise).
+    -->
+    <style name="Theme.CodeQuest.Base" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorBackground">@color/ic_launcher_background</item>
+        <item name="android:windowBackground">@drawable/code_quest_splash_background</item>
+        <item name="android:statusBarColor">@color/ic_launcher_background</item>
+        <item name="android:navigationBarColor">@color/ic_launcher_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+    <style name="Theme.CodeQuest" parent="Theme.CodeQuest.Base" />
 </resources>
