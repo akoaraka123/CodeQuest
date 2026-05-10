@@ -49,7 +49,8 @@ import com.example.codequest.state.CodeQuestAppState
 fun CodeQuestProfileScreen(
     appState: CodeQuestAppState,
     selectedTab: AppTab,
-    onTabSelected: (AppTab) -> Unit
+    onTabSelected: (AppTab) -> Unit,
+    onLogout: () -> Unit
 ) {
     val learningRows = appState.getCourses().mapIndexed { index, course ->
         val value = appState.courseLearningXp[course.id] ?: 0
@@ -86,7 +87,8 @@ fun CodeQuestProfileScreen(
         SettingsItemUiModel("\uD83D\uDC64", "Edit Profile", onClick = { appState.openEditProfile() }),
         SettingsItemUiModel("\uD83C\uDFA8", "Theme", trailingText = appState.selectedTheme, onClick = { appState.openThemeSettings() }),
         SettingsItemUiModel("\uD83D\uDD14", "Notifications", onClick = { appState.openNotificationSettings() }),
-        SettingsItemUiModel("\u2753", "Help & Support", onClick = { appState.openHelpSupport() })
+        SettingsItemUiModel("\u2753", "Help & Support", onClick = { appState.openHelpSupport() }),
+        SettingsItemUiModel("\uD83D\uDEAA", "Logout", onClick = onLogout)
     )
 
     Box(

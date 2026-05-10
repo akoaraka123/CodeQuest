@@ -16,6 +16,7 @@ import com.example.codequest.model.playbackBoardConfig
 import com.example.codequest.model.effectiveProcessSteps
 import com.example.codequest.model.normalizeCommandToken
 import com.example.codequest.model.slotCount
+import com.example.codequest.model.AppUser
 import com.example.codequest.model.Badge
 import com.example.codequest.model.Course
 import com.example.codequest.model.Lesson
@@ -132,10 +133,10 @@ class CodeQuestAppState {
         commandSequenceSuccessBalloonsShownForAttempt = true
     }
 
-    var totalXP by mutableIntStateOf(50)
+    var totalXP by mutableIntStateOf(0)
         private set
 
-    var streakDays by mutableIntStateOf(7)
+    var streakDays by mutableIntStateOf(0)
         private set
 
     var debugCorrectCount by mutableIntStateOf(0)
@@ -1066,5 +1067,71 @@ class CodeQuestAppState {
     fun backToProfileFromSettings() {
         selectedTab = AppTab.PROFILE
         currentScreen = AppScreen.MAIN_TABS
+    }
+
+    fun applyStudentSession(user: AppUser) {
+        resetStudentPlayProgress()
+        username = user.fullName.ifBlank { "Coder!" }
+    }
+
+    fun resetSessionIdentity() {
+        username = "Coder!"
+        roleTitle = "Junior Debugger"
+    }
+
+    /**
+     * Clears session progress so a newly logged-in student starts like a fresh install:
+     * no XP, no streak, first lesson unlocked only, no completed lessons/badges.
+     */
+    fun resetStudentPlayProgress() {
+        selectedTab = AppTab.HOME
+        currentScreen = AppScreen.MAIN_TABS
+        selectedCourseId = null
+        selectedLessonId = null
+        courseDetailFocusLessonId = null
+        previousTabBeforeFlow = null
+        detailParentTab = null
+        currentActivityIndex = 0
+        lessonInteractionState = LessonInteractionState.ACTIVITY
+        currentProcessStepIndex = 0
+        pendingAnswerCorrect = false
+        pendingSubmittedIndex = -1
+        isAnswerChecked = false
+        activityCommandSlots = emptyList()
+        commandPlaybackCommandsSnapshot = emptyList()
+        commandPlaybackUsesReferenceSolution = false
+        commandPlaybackResults = emptyList()
+        commandPlaybackGeneration = 0
+        playbackSummaryOverride = null
+        commandSequenceSuccessBalloonsShownForAttempt = false
+        totalXP = 0
+        streakDays = 0
+        debugCorrectCount = 0
+        lessonCorrectThisSession = 0
+        lessonOneWrongAttempts = 0
+        sessionXpEarned = 0
+        result = null
+        previousTabBeforeNotifications = null
+        activeCourseId = "thinking-in-code"
+        completedLessonIds = emptySet()
+        completedActivityIds = emptySet()
+        activityCompletionRecords = emptyMap()
+        lessonReviewMode = false
+        completedCourseIds = emptySet()
+        lessonEntryBlockedNotice = null
+        unlockedCourseIds = setOf("thinking-in-code")
+        unlockedLessonIds = setOf("tic-l1")
+        earnedBadgeIds = emptySet()
+        badgeProgress = mapOf(
+            "first-steps" to 0,
+            "thinking-coder" to 0,
+            "variable-starter" to 0,
+            "function-builder" to 0,
+            "algorithm-explorer" to 0,
+            "cs-rookie" to 0,
+            "neural-beginner" to 0
+        )
+        courseLearningXp = courseOrder.associate { it.id to 0 }.toMutableMap()
+        courseCompletedLessonCounts = courseOrder.associate { it.id to 0 }.toMutableMap()
     }
 }

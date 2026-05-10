@@ -112,19 +112,22 @@ fun CodeQuestHomeScreen(
                     )
                     Spacer(modifier = Modifier.height(18.dp))
                     WelcomeCard(
+                        displayName = appState.username,
                         dayStreak = appState.streakDays,
                         codePoints = appState.totalXP
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     LevelProgressCard(
-                        level = (appState.totalXP / 100) + 1,
+                        level = if (appState.totalXP == 0) 0 else (appState.totalXP / 100) + 1,
                         role = "Junior Debugger",
                         currentXp = appState.totalXP % 500,
                         targetXp = 500
                     )
                     Spacer(modifier = Modifier.height(14.dp))
+                    val hasLearningProgress =
+                        appState.completedLessonIds.isNotEmpty() || appState.totalXP > 0
                     GradientButton(
-                        text = "Continue Quest",
+                        text = if (hasLearningProgress) "Continue Quest" else "Start Quest",
                         enabled = activeCourse != null,
                         onClick = { appState.continueLearning() }
                     )

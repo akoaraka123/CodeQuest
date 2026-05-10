@@ -2,12 +2,13 @@ package com.example.codequest.ui.screens
 
 import androidx.compose.runtime.Composable
 import com.example.codequest.state.AppScreen
-import com.example.codequest.state.rememberCodeQuestAppState
+import com.example.codequest.state.CodeQuestAppState
 
 @Composable
-fun CodeQuestApp() {
-    val appState = rememberCodeQuestAppState()
-
+fun CodeQuestApp(
+    appState: CodeQuestAppState,
+    onLogout: () -> Unit
+) {
     when (appState.currentScreen) {
         AppScreen.NOTIFICATIONS -> NotificationsScreen(appState)
         AppScreen.MAIN_TABS -> {
@@ -33,7 +34,8 @@ fun CodeQuestApp() {
                 com.example.codequest.ui.components.AppTab.PROFILE -> CodeQuestProfileScreen(
                     appState = appState,
                     selectedTab = appState.selectedTab,
-                    onTabSelected = appState::onTabSelected
+                    onTabSelected = appState::onTabSelected,
+                    onLogout = onLogout
                 )
             }
         }

@@ -116,7 +116,8 @@ fun HeaderSection(
 }
 
 @Composable
-fun WelcomeCard(dayStreak: Int, codePoints: Int) {
+fun WelcomeCard(displayName: String, dayStreak: Int, codePoints: Int) {
+    val name = displayName.trim().ifBlank { "Coder" }
     GlassCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -131,11 +132,16 @@ fun WelcomeCard(dayStreak: Int, codePoints: Int) {
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Welcome back, Coder!", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                Text(
+                    text = "Welcome, $name!",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp
+                )
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatPill("\uD83D\uDD25 $dayStreak  Day Streak")
-                    StatPill("\uD83D\uDC8E $codePoints  Code Points")
+                    StatPill("\uD83D\uDD25 $dayStreak Day Streak")
+                    StatPill("\uD83D\uDC8E $codePoints Code Points")
                 }
             }
         }
