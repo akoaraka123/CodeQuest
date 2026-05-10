@@ -250,7 +250,7 @@ object LocalContentRepository {
                         prompt = "Which set of instructions is most complete for making the robot find the red target?",
                         difficultyLabel = "Foundational skill",
                         options = listOf(
-                            "Move forward, turn right, move forward, select red",
+                            "Turn right, move forward, turn right, move forward, select red",
                             "Select red, move forward, turn right",
                             "Turn left, select red, move backward",
                             "Move forward only"
@@ -280,7 +280,7 @@ object LocalContentRepository {
                                 explanation = "The robot can only select red after reaching the red tile."
                             )
                         ),
-                        finalResult = "The correct sequence is: move forward, turn right, move forward, select red.",
+                        finalResult = "A complete path turns toward the target, moves forward along that facing, then selects red only on the red tile.",
                         finalOutput = null,
                         requiresProcessRevealBeforeFinal = false
                     )
@@ -311,6 +311,7 @@ object LocalContentRepository {
                             "turn left"
                         ),
                         correctSequence = listOf(
+                            "turn right",
                             "move forward",
                             "turn right",
                             "move forward",
@@ -319,41 +320,48 @@ object LocalContentRepository {
                         gridRows = 3,
                         gridCols = 3,
                         goldTileCount = 0,
-                        // 0-based grid: bot starts at (1,0) facing east; red target is at (2,1).
+                        // 3×3: top-left (0,0), facing up; center (1,1) is the red target.
                         commandBoardSetup = CommandBoardSetup(
-                            robotRow = 1,
+                            robotRow = 0,
                             robotCol = 0,
-                            facing = Direction.RIGHT,
-                            targetTiles = listOf(GridPosition(2, 1))
+                            facing = Direction.UP,
+                            targetTiles = listOf(GridPosition(1, 1))
                         ),
                         correctFeedback = "Correct! Let's see how your program runs.",
                         incorrectFeedback = "Not quite. Let's walk through the logic.",
                         processSteps = listOf(
                             ProcessStep(
                                 stepNumber = 1,
-                                title = "Move into position",
-                                explanation = "The robot moves from the start tile to the empty tile.",
-                                highlightedCommand = "move forward",
-                                miniVisualHint = "◇ → bot moves one cell"
+                                title = "Face along the top row",
+                                explanation = "From facing up, turn right so forward points toward the center of the grid.",
+                                highlightedCommand = "turn right",
+                                miniVisualHint = "↻ → face right"
                             ),
                             ProcessStep(
                                 stepNumber = 2,
-                                title = "Turn toward target",
-                                explanation = "The robot turns right to face down toward the red target.",
-                                highlightedCommand = "turn right",
-                                miniVisualHint = "↻ face the target"
+                                title = "Slide to the middle column",
+                                explanation = "Move forward one tile along the top row toward the center.",
+                                highlightedCommand = "move forward",
+                                miniVisualHint = "◇ → one cell forward"
                             ),
                             ProcessStep(
                                 stepNumber = 3,
-                                title = "Reach the target",
-                                explanation = "The robot moves forward onto the red target tile.",
-                                highlightedCommand = "move forward",
-                                miniVisualHint = "◇ → onto red tile"
+                                title = "Face downward",
+                                explanation = "Turn right again so forward points toward the bottom row—toward the red tile.",
+                                highlightedCommand = "turn right",
+                                miniVisualHint = "↻ → face down"
                             ),
                             ProcessStep(
                                 stepNumber = 4,
+                                title = "Step onto the red tile",
+                                explanation = "Move forward into the center cell where the red target sits.",
+                                highlightedCommand = "move forward",
+                                miniVisualHint = "◇ → onto red"
+                            ),
+                            ProcessStep(
+                                stepNumber = 5,
                                 title = "Finish the run",
-                                explanation = "The robot selects the red target.",
+                                explanation = "Select red only works while standing on the red target tile.",
                                 highlightedCommand = "select red",
                                 miniVisualHint = "✓ objective met"
                             )
@@ -362,19 +370,19 @@ object LocalContentRepository {
                             ProcessStep(
                                 stepNumber = 1,
                                 title = "Replay your sequence mentally",
-                                explanation = "Walk through each filled slot in order. This board needs: move forward, turn right, move forward, select red.",
-                                miniVisualHint = "⚠ order matters"
+                                explanation = "Walk through each filled slot in order. Forward always follows the robot’s current facing—turn first when you need a new direction.",
+                                miniVisualHint = "⚠ facing matters"
                             ),
                             ProcessStep(
                                 stepNumber = 2,
                                 title = "Check target selection",
-                                explanation = "select red is only correct while the robot is standing on the red tile.",
+                                explanation = "select red only succeeds on the red tile; use turns and moves to reach it first.",
                                 highlightedCommand = "select red"
                             ),
                             ProcessStep(
                                 stepNumber = 3,
                                 title = "Compare to the intended path",
-                                explanation = "Compare your four commands to the intended plan and adjust the slot that breaks the path.",
+                                explanation = "Adjust the earliest step where your robot’s position or facing no longer matches the goal.",
                                 miniVisualHint = "Tip: tap a slot to clear it"
                             )
                         ),
@@ -385,75 +393,88 @@ object LocalContentRepository {
                         id = "tic-l2-gems-2",
                         lessonId = "tic-l2",
                         type = ActivityType.COMMAND_SEQUENCE,
-                        prompt = "Complete the program. Collect all the gold.",
+                        prompt = "Complete the program. Find the red target.",
                         difficultyLabel = "Foundational skill",
-                        visualType = "GRID_GOLD",
+                        visualType = "GRID_COLOR_TARGET",
                         availableCommands = listOf(
                             "move forward",
-                            "collect gold",
                             "turn right",
+                            "select red",
                             "turn left"
                         ),
+                        // 4×4: bottom-right (3,3) facing up → reach red at (0,1) [row 1, col 2 in 1-based],
+                        // then select red. Validated only via [CommandSequencePlayback.simulate], not string match.
                         correctSequence = listOf(
+                            "move forward",
+                            "move forward",
+                            "move forward",
                             "turn left",
                             "move forward",
-                            "collect gold",
-                            "turn right",
                             "move forward",
-                            "collect gold"
+                            "select red"
                         ),
                         gridRows = 4,
                         gridCols = 4,
-                        goldTileCount = 2,
-                        // 0-based grid: bot starts at (2,2) facing east; second puzzle uses a different path.
+                        goldTileCount = 0,
                         commandBoardSetup = CommandBoardSetup(
-                            robotRow = 2,
-                            robotCol = 2,
-                            facing = Direction.RIGHT,
-                            targetTiles = listOf(GridPosition(1, 2), GridPosition(1, 3))
+                            robotRow = 3,
+                            robotCol = 3,
+                            facing = Direction.UP,
+                            targetTiles = listOf(GridPosition(0, 1))
                         ),
-                        correctFeedback = "Great run. You found the new path.",
-                        incorrectFeedback = "Not quite. Try tracing direction changes step by step.",
+                        correctFeedback = "Correct! Let's see how your program runs.",
+                        incorrectFeedback = "Not quite. Let's walk through the logic.",
                         processSteps = listOf(
                             ProcessStep(
                                 stepNumber = 1,
-                                title = "Face the upper path",
-                                explanation = "Turn left first so the robot can move to the top row.",
-                                highlightedCommand = "turn left"
+                                title = "Climb the right edge",
+                                explanation = "While facing up from the bottom-right corner, move forward along the right column toward the top.",
+                                highlightedCommand = "move forward",
+                                miniVisualHint = "◇ forward follows facing"
                             ),
                             ProcessStep(
                                 stepNumber = 2,
-                                title = "Reach the first gold",
-                                explanation = "Move forward and collect the gold directly ahead.",
-                                highlightedCommand = "collect gold"
+                                title = "Face along the top row",
+                                explanation = "After reaching the top-right tile, turn left so forward points toward the red target.",
+                                highlightedCommand = "turn left",
+                                miniVisualHint = "↻ → face left"
                             ),
                             ProcessStep(
                                 stepNumber = 3,
-                                title = "Shift to the next tile",
-                                explanation = "Turn right, move forward, then collect the final gold.",
-                                highlightedCommand = "move forward"
+                                title = "Slide to the red tile",
+                                explanation = "Move forward along the top row until you stand on the red target.",
+                                highlightedCommand = "move forward",
+                                miniVisualHint = "◇ → onto red"
+                            ),
+                            ProcessStep(
+                                stepNumber = 4,
+                                title = "Select on the target only",
+                                explanation = "select red succeeds only when the robot is on the red tile.",
+                                highlightedCommand = "select red",
+                                miniVisualHint = "✓ finish"
                             )
                         ),
                         processStepsWhenIncorrect = listOf(
                             ProcessStep(
                                 stepNumber = 1,
-                                title = "Check your first turn",
-                                explanation = "This puzzle needs a turn before the first move.",
-                                miniVisualHint = "Start by rotating"
+                                title = "Trace facing and forward",
+                                explanation = "Forward always moves one tile in the direction the robot faces—turn first when you need to change lanes.",
+                                miniVisualHint = "⚠ facing matters"
                             ),
                             ProcessStep(
                                 stepNumber = 2,
-                                title = "Verify both collect actions",
-                                explanation = "Each collect must happen on a gold tile.",
-                                highlightedCommand = "collect gold"
+                                title = "Check select red",
+                                explanation = "select red only works on the red target tile after you move onto it.",
+                                highlightedCommand = "select red"
                             ),
                             ProcessStep(
                                 stepNumber = 3,
-                                title = "Replay and compare",
-                                explanation = "Compare your sequence with the target path and adjust the earliest mismatch."
+                                title = "Replay step by step",
+                                explanation = "Compare your commands to the board: stay in bounds and end on the red tile.",
+                                miniVisualHint = "Tip: tap a slot to clear it"
                             )
                         ),
-                        finalResult = "All gold collected on puzzle 2.",
+                        finalResult = "Red target found and selected.",
                         finalOutput = null
                     )
                 )

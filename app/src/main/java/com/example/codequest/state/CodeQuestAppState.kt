@@ -5,9 +5,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.codequest.data.LocalContentRepository
+import com.example.codequest.model.ActivityCompletionRecord
 import com.example.codequest.model.ActivityItem
 import com.example.codequest.model.ActivityType
 import com.example.codequest.model.isTicLesson1MultipleChoice
+import com.example.codequest.model.requiresMultipleChoice
 import com.example.codequest.model.CommandSequencePlayback
 import com.example.codequest.model.PlaybackStepResult
 import com.example.codequest.model.playbackBoardConfig
@@ -119,6 +121,17 @@ class CodeQuestAppState {
     var playbackSummaryOverride by mutableStateOf<String?>(null)
         private set
 
+    /**
+     * After a successful command-sequence playback we show the success balloons once; replay on the
+     * same attempt does not repeat. Cleared by [resetInteractionForActivity].
+     */
+    var commandSequenceSuccessBalloonsShownForAttempt by mutableStateOf(false)
+        private set
+
+    fun markCommandSequenceSuccessBalloonsShown() {
+        commandSequenceSuccessBalloonsShownForAttempt = true
+    }
+
     var totalXP by mutableIntStateOf(50)
         private set
 
@@ -215,7 +228,29 @@ class CodeQuestAppState {
     var completedLessonIds by mutableStateOf(setOf<String>())
         private set
 
+    /**
+     * Activity IDs ([ActivityItem.id]) answered correctly and proceeded past feedback—persists for the
+     * app session. Prevents redoing the same question after leaving and re-opening the lesson.
+     */
+    var completedActivityIds by mutableStateOf(setOf<String>())
+        private set
+
+    /** Snapshots for review-only playback; keys match [ActivityItem.id]. */
+    var activityCompletionRecords by mutableStateOf(mapOf<String, ActivityCompletionRecord>())
+        private set
+
+    /**
+     * When true, the current activity is opened as read-only review (completed earlier).
+     * Editing, Check, and XP grants are disabled.
+     */
+    var lessonReviewMode by mutableStateOf(false)
+        private set
+
     var completedCourseIds by mutableStateOf(setOf<String>())
+        private set
+
+    /** Shown when opening a lesson is blocked because every activity is already completed. */
+    var lessonEntryBlockedNotice by mutableStateOf<String?>(null)
         private set
 
     var unlockedCourseIds by mutableStateOf(setOf("thinking-in-code"))
@@ -282,6 +317,16 @@ class CodeQuestAppState {
     fun getCurrentActivity(): ActivityItem? =
         getActivitiesForCurrentLesson().getOrNull(currentActivityIndex)
 
+    /** First activity index not in [completedActivityIds], or -1 if all are completed. */
+    fun firstIncompleteActivityIndex(lesson: Lesson): Int =
+        lesson.activities.indexOfFirst { it.id !in completedActivityIds }
+
+    fun lessonHasIncompleteActivity(lesson: Lesson): Boolean =
+        lesson.activities.isNotEmpty() && firstIncompleteActivityIndex(lesson) >= 0
+
+    fun lessonHasAnyCompletedActivity(lesson: Lesson): Boolean =
+        lesson.activities.any { it.id in completedActivityIds }
+
     fun currentRevealSteps(): List<com.example.codequest.model.ProcessStep> {
         val a = getCurrentActivity() ?: return emptyList()
         return a.effectiveProcessSteps(pendingAnswerCorrect)
@@ -328,6 +373,7 @@ class CodeQuestAppState {
         if (currentScreen == AppScreen.MAIN_TABS) {
             previousTabBeforeFlow = selectedTab
         }
+        lessonEntryBlockedNotice = null
         selectedCourseId = courseId
         val c = getCourse(courseId)
         courseDetailFocusLessonId = c?.let { pickDefaultFocusLesson(it) }
@@ -336,6 +382,7 @@ class CodeQuestAppState {
     }
 
     fun backFromCourseDetail() {
+        lessonEntryBlockedNotice = null
         selectedCourseId = null
         courseDetailFocusLessonId = null
         selectedTab = previousTabBeforeFlow ?: AppTab.QUESTS
@@ -348,13 +395,24 @@ class CodeQuestAppState {
         if (lessonId !in unlockedLessonIds) return false
         val lesson = LocalContentRepository.lessonById(lessonId) ?: return false
         if (lesson.courseId != courseId) return false
+        lessonEntryBlockedNotice = null
+        lessonReviewMode = false
         if (lesson.activities.isEmpty()) {
             completeTextOnlyLessonFromCourse(courseId, lessonId)
             return true
         }
+        if (lesson.id in completedLessonIds) {
+            completedActivityIds = completedActivityIds + lesson.activities.map { it.id }.toSet()
+        }
+        val resumeIdx = lesson.activities.indexOfFirst { it.id !in completedActivityIds }
+        if (resumeIdx < 0) {
+            lessonEntryBlockedNotice =
+                "You already completed every question in this lesson. Retakes are disabled."
+            return false
+        }
         activeCourseId = courseId
         selectedLessonId = lessonId
-        currentActivityIndex = 0
+        currentActivityIndex = resumeIdx
         sessionXpEarned = 0
         lessonCorrectThisSession = 0
         lessonOneWrongAttempts = 0
@@ -399,6 +457,7 @@ class CodeQuestAppState {
     }
 
     fun fillNextCommandSlot(command: String) {
+        if (lessonReviewMode) return
         val idx = activityCommandSlots.indexOfFirst { it == null }
         if (idx < 0) return
         val copy = activityCommandSlots.toMutableList()
@@ -407,6 +466,7 @@ class CodeQuestAppState {
     }
 
     fun assignCommandToSlot(slotIndex: Int, command: String) {
+        if (lessonReviewMode) return
         if (slotIndex !in activityCommandSlots.indices) return
         val copy = activityCommandSlots.toMutableList()
         copy[slotIndex] = command
@@ -414,6 +474,7 @@ class CodeQuestAppState {
     }
 
     fun clearCommandSlot(slotIndex: Int) {
+        if (lessonReviewMode) return
         if (slotIndex !in activityCommandSlots.indices) return
         val copy = activityCommandSlots.toMutableList()
         copy[slotIndex] = null
@@ -421,10 +482,12 @@ class CodeQuestAppState {
     }
 
     fun clearAllCommandSlots() {
+        if (lessonReviewMode) return
         initCommandSlots()
     }
 
     fun selectMcOption(answerIndex: Int) {
+        if (lessonReviewMode) return
         pendingSubmittedIndex = answerIndex
     }
 
@@ -448,10 +511,12 @@ class CodeQuestAppState {
         commandPlaybackResults = emptyList()
         playbackSummaryOverride = null
         commandPlaybackGeneration = 0
+        commandSequenceSuccessBalloonsShownForAttempt = false
         initCommandSlots()
     }
 
     fun submitActivityCheck() {
+        if (lessonReviewMode) return
         val a = getCurrentActivity() ?: return
         if (a.isTicLesson1MultipleChoice()) {
             isAnswerChecked = true
@@ -484,6 +549,7 @@ class CodeQuestAppState {
     }
 
     fun showProcessRevealFromFeedback() {
+        if (lessonReviewMode) return
         val a = getCurrentActivity()
         if (a?.isTicLesson1MultipleChoice() == true) return
         if (a?.type == ActivityType.COMMAND_SEQUENCE) {
@@ -534,11 +600,13 @@ class CodeQuestAppState {
     }
 
     fun proceedAfterFinalResult() {
+        if (lessonReviewMode) return
         grantPendingCorrectActivityXpIfApplicable()
         moveToNextLessonActivityOrCompleteBonus()
     }
 
     fun lesson1TryAgainAfterWrong() {
+        if (lessonReviewMode) return
         lessonInteractionState = LessonInteractionState.ACTIVITY
         pendingSubmittedIndex = -1
         pendingAnswerCorrect = false
@@ -550,18 +618,53 @@ class CodeQuestAppState {
     }
 
     fun lesson1ProceedAfterCorrectFeedback() {
+        if (lessonReviewMode) return
         grantPendingCorrectActivityXpIfApplicable()
         moveToNextLessonActivityOrCompleteBonus()
     }
 
     /** After viewing the correct answer (no XP for failed attempt). */
     fun lesson1ProceedAfterRevealExplanation() {
+        if (lessonReviewMode) return
         moveToNextLessonActivityOrCompleteBonus()
+    }
+
+    private fun buildCompletionRecord(a: ActivityItem): ActivityCompletionRecord {
+        val playbackSummary = playbackSummaryOverride ?: when (a.type) {
+            ActivityType.COMMAND_SEQUENCE -> {
+                val results = commandPlaybackResults
+                if (results.isEmpty()) null
+                else CommandSequencePlayback.buildPlaybackFinalSummary(
+                    pendingAnswerMatchedKey = pendingAnswerCorrect,
+                    results = results,
+                    finalRemainingCount = results.last().remainingTargetsAfter.size
+                )
+            }
+            else -> null
+        }
+        return ActivityCompletionRecord(
+            activityId = a.id,
+            correct = true,
+            xpGranted = a.xpReward,
+            selectedMcIndex = if (a.requiresMultipleChoice()) pendingSubmittedIndex.takeIf { it >= 0 } else null,
+            commandTokens = if (a.type == ActivityType.COMMAND_SEQUENCE) {
+                activityCommandSlots.mapNotNull { it }
+            } else {
+                null
+            },
+            playbackSummary = playbackSummary
+        )
     }
 
     private fun grantPendingCorrectActivityXpIfApplicable() {
         val a = getCurrentActivity() ?: return
         if (!pendingAnswerCorrect) return
+        if (a.id in completedActivityIds) return
+
+        val record = buildCompletionRecord(a)
+        activityCompletionRecords = activityCompletionRecords + (a.id to record)
+
+        completedActivityIds = completedActivityIds + a.id
         sessionXpEarned += a.xpReward
         totalXP += a.xpReward
         val cid = selectedCourseId ?: ""
@@ -596,8 +699,82 @@ class CodeQuestAppState {
     }
 
     fun retryCurrentActivity() {
+        if (lessonReviewMode) return
         resetInteractionForActivity()
         lessonInteractionState = LessonInteractionState.ACTIVITY
+    }
+
+    /**
+     * After reviewing a completed command-sequence playback, go to the next unfinished question
+     * or return to the course detail screen.
+     */
+    fun continueFromCompletedReviewToNextOrExit() {
+        if (!lessonReviewMode) return
+        val lesson = getSelectedLesson() ?: run {
+            lessonReviewMode = false
+            backFromLessonActivity()
+            return
+        }
+        lessonReviewMode = false
+        playbackSummaryOverride = null
+        val nextIdx = firstIncompleteActivityIndex(lesson)
+        if (nextIdx < 0) {
+            resetInteractionForActivity()
+            selectedLessonId = null
+            currentScreen = AppScreen.COURSE_DETAIL
+            return
+        }
+        currentActivityIndex = nextIdx
+        resetInteractionForActivity()
+        lessonInteractionState = LessonInteractionState.ACTIVITY
+    }
+
+    /**
+     * Opens a finished activity in read-only review (playback / chosen answers). No XP.
+     */
+    fun openCompletedActivityReview(courseId: String, lessonId: String, activityIndex: Int): Boolean {
+        val lesson = LocalContentRepository.lessonById(lessonId) ?: return false
+        if (lesson.courseId != courseId) return false
+        val act = lesson.activities.getOrNull(activityIndex) ?: return false
+        if (act.id !in completedActivityIds) return false
+        val record = activityCompletionRecords[act.id] ?: return false
+
+        lessonEntryBlockedNotice = null
+        activeCourseId = courseId
+        selectedCourseId = courseId
+        selectedLessonId = lessonId
+        courseDetailFocusLessonId = lessonId
+        currentActivityIndex = activityIndex
+        lessonReviewMode = true
+        lessonOneWrongAttempts = 0
+        sessionXpEarned = 0
+        lessonCorrectThisSession = 0
+
+        when (act.type) {
+            ActivityType.COMMAND_SEQUENCE -> {
+                val cmds = record.commandTokens ?: return false
+                activityCommandSlots = cmds.map { it }
+                commandPlaybackCommandsSnapshot = cmds
+                commandPlaybackUsesReferenceSolution = false
+                val cfg = act.playbackBoardConfig()
+                commandPlaybackResults = CommandSequencePlayback.simulate(cfg, cmds)
+                commandPlaybackGeneration += 1
+                playbackSummaryOverride = record.playbackSummary
+                pendingAnswerCorrect = true
+                isAnswerChecked = true
+                lessonInteractionState = LessonInteractionState.PROCESS_REVEAL
+            }
+            ActivityType.MULTIPLE_CHOICE,
+            ActivityType.OUTPUT_TRACING,
+            ActivityType.DEBUG_CODE -> {
+                pendingSubmittedIndex = record.selectedMcIndex ?: -1
+                pendingAnswerCorrect = record.correct
+                isAnswerChecked = true
+                lessonInteractionState = LessonInteractionState.FEEDBACK
+            }
+        }
+        currentScreen = AppScreen.LESSON_ACTIVITY
+        return true
     }
 
     private fun applyLessonCompletionRewards(
@@ -606,6 +783,7 @@ class CodeQuestAppState {
         questionsCorrect: Int,
         totalActivities: Int
     ) {
+        completedActivityIds = completedActivityIds + lesson.activities.map { it.id }.toSet()
         completedLessonIds = completedLessonIds + lesson.id
         val doneCount = course.lessons.count { it.id in completedLessonIds }
         courseCompletedLessonCounts[course.id] = doneCount
@@ -674,7 +852,7 @@ class CodeQuestAppState {
     }
 
     fun backFromLessonActivity() {
-        currentActivityIndex = 0
+        lessonReviewMode = false
         resetInteractionForActivity()
         sessionXpEarned = 0
         lessonCorrectThisSession = 0
@@ -736,12 +914,37 @@ class CodeQuestAppState {
     }
 
     fun reviewCurrentLessonActivities() {
+        val r = result
+        val lessonId = r?.lessonId ?: selectedLessonId
+        if (lessonId == null) return
+        val lesson = LocalContentRepository.lessonById(lessonId) ?: return
+        if (lesson.id in completedLessonIds) {
+            completedActivityIds = completedActivityIds + lesson.activities.map { it.id }.toSet()
+        }
+        val resumeIdx = lesson.activities.indexOfFirst { it.id !in completedActivityIds }
+        if (resumeIdx < 0) {
+            lessonEntryBlockedNotice =
+                "You already completed every question in this lesson. Retakes are disabled."
+            result = null
+            val cid = r?.courseId ?: selectedCourseId ?: activeCourseId
+            selectedCourseId = cid
+            activeCourseId = cid
+            courseDetailFocusLessonId = lessonId
+            selectedLessonId = null
+            currentScreen = AppScreen.COURSE_DETAIL
+            return
+        }
         result = null
-        currentActivityIndex = 0
+        selectedLessonId = lessonId
+        selectedCourseId = r?.courseId ?: selectedCourseId
+        activeCourseId = r?.courseId ?: activeCourseId
+        lessonReviewMode = false
+        currentActivityIndex = resumeIdx
         sessionXpEarned = 0
         lessonCorrectThisSession = 0
         lessonOneWrongAttempts = 0
         resetInteractionForActivity()
+        initCommandSlots()
         currentScreen = AppScreen.LESSON_ACTIVITY
     }
 

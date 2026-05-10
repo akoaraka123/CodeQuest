@@ -9,10 +9,12 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,6 +35,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,32 +50,50 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.IntOffset
+import kotlin.math.min
 import kotlin.math.roundToInt
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codequest.model.ActivityItem
+import com.example.codequest.model.CommandSequencePlayback
 import com.example.codequest.model.ActivityType
 import com.example.codequest.model.effectiveProcessSteps
 import com.example.codequest.model.isTicLesson1MultipleChoice
-import com.example.codequest.model.CommandSequencePlayback
 import com.example.codequest.model.Direction
 import com.example.codequest.model.GridPosition
 import com.example.codequest.model.PlaybackBoardConfig
 import com.example.codequest.model.PlaybackStepResult
 import com.example.codequest.model.normalizeCommandToken
 import com.example.codequest.model.playbackBoardConfig
+import com.example.codequest.model.requiresMultipleChoice
 import com.example.codequest.model.rotationZDegrees
 import com.example.codequest.state.CodeQuestAppState
 import com.example.codequest.state.LessonInteractionState
 import com.example.codequest.ui.components.CodeBlockCard
+import com.example.codequest.ui.components.CommandSequenceSuccessOverlay
 import com.example.codequest.ui.components.CodeQuestBackButton
 import com.example.codequest.ui.components.FeedbackCard
 import com.example.codequest.ui.components.FinalResultCard
@@ -83,7 +105,9 @@ import com.example.codequest.ui.theme.ActiveCyan
 import com.example.codequest.ui.theme.BackgroundEnd
 import com.example.codequest.ui.theme.BackgroundStart
 import com.example.codequest.ui.theme.CardBorder
+import com.example.codequest.ui.theme.CardSurface
 import com.example.codequest.ui.theme.CompletedGreen
+import com.example.codequest.ui.theme.PrimaryCyan
 import com.example.codequest.ui.theme.PrimaryPurple
 import com.example.codequest.ui.theme.TextMuted
 import com.example.codequest.ui.theme.TextPrimary
@@ -111,6 +135,94 @@ private fun playbackStepCaption(step: PlaybackStepResult): String {
         "Step $n is incorrect:\n${step.explanation}"
     } else {
         "Step $n:\n${step.explanation}"
+    }
+}
+
+private val StepHexShape = object : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val path = Path().apply {
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+            val r = kotlin.math.min(size.width, size.height) / 2f * 0.88f
+            for (i in 0 until 6) {
+                val theta = -kotlin.math.PI / 2.0 + i * kotlin.math.PI / 3.0
+                val x = cx + (r * kotlin.math.cos(theta)).toFloat()
+                val y = cy + (r * kotlin.math.sin(theta)).toFloat()
+                if (i == 0) moveTo(x, y) else lineTo(x, y)
+            }
+            close()
+        }
+        return Outline.Generic(path)
+    }
+}
+
+private fun Modifier.tileCircuitTexture(dotColor: Color): Modifier = drawWithContent {
+    val step = 5.dp.toPx()
+    val r = 0.85.dp.toPx()
+    var y = step * 0.5f
+    while (y < size.height) {
+        var x = step * 0.5f
+        while (x < size.width) {
+            drawCircle(color = dotColor, radius = r, center = Offset(x, y))
+            x += step
+        }
+        y += step
+    }
+    drawContent()
+}
+
+private fun Modifier.slotDashedRing(color: Color, cornerPx: Float): Modifier = drawWithContent {
+    drawContent()
+    val w = 1.dp.toPx()
+    drawRoundRect(
+        brush = SolidColor(color),
+        topLeft = Offset(w / 2f, w / 2f),
+        size = Size(size.width - w, size.height - w),
+        cornerRadius = CornerRadius(cornerPx, cornerPx),
+        style = Stroke(
+            width = w,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(7f, 5f), 0f)
+        )
+    )
+}
+
+@Composable
+private fun CommandSequenceCheckButton(
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                if (enabled) {
+                    Brush.horizontalGradient(listOf(PrimaryCyan, PrimaryPurple))
+                } else {
+                    Brush.horizontalGradient(listOf(Color(0xFF2C354D), Color(0xFF1A2234)))
+                }
+            )
+            .clickable(enabled = enabled) { onClick() }
+            .padding(horizontal = 18.dp, vertical = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Check",
+                color = if (enabled) Color.White else TextMuted.copy(alpha = 0.78f),
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 20.sp,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "\u2192",
+                color = if (enabled) Color.White else TextMuted.copy(alpha = 0.62f),
+                fontSize = 22.sp
+            )
+        }
     }
 }
 
@@ -162,8 +274,8 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
             .padding(horizontal = 16.dp, vertical = rootVerticalPadding),
         verticalArrangement = Arrangement.spacedBy(rootVerticalSpacing)
     ) {
-        item {
-            LessonActivityTopBar(
+            item {
+                LessonActivityTopBar(
                 onBack = { showLeaveDialog = true },
                 activityIndex = appState.currentActivityIndex,
                 totalActivities = activities.size,
@@ -216,8 +328,7 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                         )
                     }
                     item {
-                        GradientButton(
-                            text = "Check",
+                        CommandSequenceCheckButton(
                             enabled = appState.activityReadyForCheck()
                         ) { appState.submitActivityCheck() }
                     }
@@ -239,12 +350,20 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                     }
                     items(count = activity.options.size) { index ->
                         val selected = appState.pendingSubmittedIndex == index
-                        val border = if (selected) ActiveCyan else CardBorder
+                        val correctIdx = activity.correctAnswerIndex
+                        val showCorrect = appState.lessonReviewMode && index == correctIdx
+                        val border = when {
+                            showCorrect -> CompletedGreen
+                            selected -> ActiveCyan
+                            else -> CardBorder
+                        }
                         GlassCard(
                             borderBrush = Brush.linearGradient(listOf(border, CardBorder)),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { appState.selectMcOption(index) }
+                                .clickable(enabled = !appState.lessonReviewMode) {
+                                    appState.selectMcOption(index)
+                                }
                         ) {
                             Text(
                                 text = activity.options[index],
@@ -254,11 +373,13 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                             )
                         }
                     }
-                    item {
-                        GradientButton(
-                            text = "Check",
-                            enabled = appState.activityReadyForCheck()
-                        ) { appState.submitActivityCheck() }
+                    if (!appState.lessonReviewMode) {
+                        item {
+                            GradientButton(
+                                text = "Check",
+                                enabled = appState.activityReadyForCheck()
+                            ) { appState.submitActivityCheck() }
+                        }
                     }
                 }
             }
@@ -266,6 +387,31 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
             LessonInteractionState.FEEDBACK -> {
                 item {
                     TaskHeaderSection(activity = activity)
+                }
+                if (appState.lessonReviewMode && activity.requiresMultipleChoice()) {
+                    items(count = activity.options.size) { index ->
+                        val selected = appState.pendingSubmittedIndex == index
+                        val correctIdx = activity.correctAnswerIndex
+                        val isCorrectOption = index == correctIdx
+                        val border = when {
+                            isCorrectOption -> CompletedGreen
+                            selected -> ActiveCyan
+                            else -> CardBorder
+                        }
+                        GlassCard(
+                            borderBrush = Brush.linearGradient(listOf(border, CardBorder)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = activity.options[index],
+                                color = TextPrimary,
+                                fontSize = 15.sp,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(4.dp)
+                            )
+                        }
+                    }
                 }
                 item {
                     val l1mc = activity.isTicLesson1MultipleChoice()
@@ -285,7 +431,7 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                 }
                 if (activity.isTicLesson1MultipleChoice()) {
                     val attempts = appState.lessonOneWrongAttempts
-                    if (!appState.pendingAnswerCorrect && attempts < 3) {
+                    if (!appState.lessonReviewMode && !appState.pendingAnswerCorrect && attempts < 3) {
                         item {
                             val left = (3 - attempts).coerceAtLeast(0)
                             Text(
@@ -297,28 +443,48 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                         }
                     }
                     item {
-                        when {
-                            appState.pendingAnswerCorrect -> {
-                                val lastQ = appState.currentActivityIndex >= activities.lastIndex
-                                GradientButton(text = if (lastQ) "Finish lesson" else "Next Question") {
-                                    appState.lesson1ProceedAfterCorrectFeedback()
+                        if (appState.lessonReviewMode) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                GradientButton(text = "Continue to next question") {
+                                    appState.continueFromCompletedReviewToNextOrExit()
+                                }
+                                GradientButton(text = "Back to lesson path") {
+                                    appState.backFromLessonActivity()
                                 }
                             }
-                            attempts >= 3 -> {
-                                GradientButton(text = "View Correct Answer") {
-                                    appState.lesson1OpenCorrectAnswerReveal()
+                        } else {
+                            when {
+                                appState.pendingAnswerCorrect -> {
+                                    val lastQ = appState.currentActivityIndex >= activities.lastIndex
+                                    GradientButton(text = if (lastQ) "Finish lesson" else "Next Question") {
+                                        appState.lesson1ProceedAfterCorrectFeedback()
+                                    }
                                 }
-                            }
-                            else -> {
-                                GradientButton(text = "Try Again") {
-                                    appState.lesson1TryAgainAfterWrong()
+                                attempts >= 3 -> {
+                                    GradientButton(text = "View Correct Answer") {
+                                        appState.lesson1OpenCorrectAnswerReveal()
+                                    }
+                                }
+                                else -> {
+                                    GradientButton(text = "Try Again") {
+                                        appState.lesson1TryAgainAfterWrong()
+                                    }
                                 }
                             }
                         }
                     }
                 } else {
                     item {
-                        if (appState.pendingAnswerCorrect) {
+                        if (appState.lessonReviewMode) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                GradientButton(text = "Continue to next question") {
+                                    appState.continueFromCompletedReviewToNextOrExit()
+                                }
+                                GradientButton(text = "Back to lesson path") {
+                                    appState.backFromLessonActivity()
+                                }
+                            }
+                        } else if (appState.pendingAnswerCorrect) {
                             val walkthroughSteps =
                                 activity.effectiveProcessSteps(answerCorrect = true)
                             val continueToWalkthrough =
@@ -462,14 +628,25 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                     }
                 }
                 item {
-                    val lastActivity = appState.currentActivityIndex >= activities.lastIndex
-                    val nextLabel =
-                        if (lastActivity) "Finish lesson" else "Next question"
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        GradientButton(text = nextLabel) { appState.proceedAfterFinalResult() }
-                        GradientButton(text = "Retry") { appState.retryCurrentActivity() }
-                        GradientButton(text = if (lastActivity) "Learning path" else "Continue lesson") {
-                            appState.backFromLessonActivity()
+                    if (appState.lessonReviewMode) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            GradientButton(text = "Continue to next question") {
+                                appState.continueFromCompletedReviewToNextOrExit()
+                            }
+                            GradientButton(text = "Back to lesson path") {
+                                appState.backFromLessonActivity()
+                            }
+                        }
+                    } else {
+                        val lastActivity = appState.currentActivityIndex >= activities.lastIndex
+                        val nextLabel =
+                            if (lastActivity) "Finish lesson" else "Next question"
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            GradientButton(text = nextLabel) { appState.proceedAfterFinalResult() }
+                            GradientButton(text = "Retry") { appState.retryCurrentActivity() }
+                            GradientButton(text = if (lastActivity) "Learning path" else "Continue lesson") {
+                                appState.backFromLessonActivity()
+                            }
                         }
                     }
                 }
@@ -491,17 +668,19 @@ private fun CommandSequenceActivitySingleScreen(
     onBack: () -> Unit
 ) {
     val boardCfg = remember(activity.id) { activity.playbackBoardConfig() }
-    val screenH = LocalConfiguration.current.screenHeightDp.dp
+    val scrollState = rememberScrollState()
     val rootPad = if (compactScreen) 10.dp else 12.dp
     val sectionGap = if (compactScreen) 6.dp else 8.dp
-    val boardWeight = if (compactScreen) 1.02f else 1.12f
+    val readOnlyCs = appState.lessonReviewMode
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .background(Brush.verticalGradient(listOf(BackgroundStart, BackgroundEnd)))
             .statusBarsPadding()
-            .padding(horizontal = rootPad, vertical = rootPad),
+            .padding(horizontal = rootPad, vertical = rootPad)
+            .padding(bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(sectionGap)
     ) {
         LessonActivityTopBar(
@@ -517,37 +696,37 @@ private fun CommandSequenceActivitySingleScreen(
         )
         TaskHeaderSection(activity = activity)
 
-        Box(modifier = Modifier.weight(boardWeight, fill = true)) {
-            CommandPuzzleBoard(
-                boardCfg = boardCfg,
-                robotRow = boardCfg.robotStart.row.toFloat(),
-                robotCol = boardCfg.robotStart.col.toFloat(),
-                rotationDegrees = boardCfg.facing.rotationZDegrees(),
-                remainingTargets = boardCfg.initialTargets,
-                topStatusText = "red target",
-                trailingHint = null,
-                flashTargetAt = null,
-                modifier = Modifier.fillMaxSize(),
-                highlightCell = null,
-                warnCell = null,
-                emphasizeRobotIssue = false,
-                visualType = activity.visualType,
-                boardAspectRatio = if (compactScreen) 1.18f else null
-            )
-        }
+        CommandPuzzleBoard(
+            boardCfg = boardCfg,
+            robotRow = boardCfg.robotStart.row.toFloat(),
+            robotCol = boardCfg.robotStart.col.toFloat(),
+            rotationDegrees = boardCfg.facing.rotationZDegrees(),
+            remainingTargets = boardCfg.initialTargets,
+            topStatusText = "red target",
+            trailingHint = null,
+            flashTargetAt = null,
+            modifier = Modifier.fillMaxWidth(),
+            highlightCell = null,
+            warnCell = null,
+            emphasizeRobotIssue = false,
+            visualType = activity.visualType
+        )
 
         CommandSlotPanel(
             slots = appState.activityCommandSlots,
-            onSlotClick = { i -> appState.clearCommandSlot(i) },
-            compactMode = true
+            onSlotClick = { i -> if (!readOnlyCs) appState.clearCommandSlot(i) },
+            compactMode = true,
+            readOnly = readOnlyCs
         )
-        CommandChipRow(
-            commands = activity.availableCommands,
-            onCommandClick = { appState.fillNextCommandSlot(it) }
-        )
-        Box(modifier = Modifier.height((screenH * 0.075f).coerceIn(46.dp, 58.dp))) {
-            GradientButton(
-                text = "Check",
+        if (!readOnlyCs) {
+            CommandChipRow(
+                commands = activity.availableCommands,
+                onCommandClick = { appState.fillNextCommandSlot(it) }
+            )
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        if (!readOnlyCs) {
+            CommandSequenceCheckButton(
                 enabled = appState.activityReadyForCheck()
             ) { appState.submitActivityCheck() }
         }
@@ -649,25 +828,32 @@ private fun CommandPuzzleBoard(
     emphasizeRobotIssue: Boolean = false,
     visualType: String? = null,
     modifier: Modifier = Modifier,
-    boardAlpha: Float = 1f,
-    boardAspectRatio: Float? = null
+    boardAlpha: Float = 1f
 ) {
     val rows = boardCfg.rows
     val cols = boardCfg.cols
-    val renderedAspectRatio = boardAspectRatio ?: cols.toFloat() / rows.toFloat()
+    /** Width:height of the interactive grid (3×3 boards use a 1:1 square). */
+    val gridAspectRatio =
+        if (cols == rows) {
+            1f
+        } else {
+            cols.toFloat() / rows.toFloat()
+        }
+    val boardCorner = 18.dp
+    val tileCorner = 10.dp
     GlassCard(
         modifier = modifier,
         borderBrush = Brush.linearGradient(
             listOf(
-                Color.White.copy(alpha = 0.35f),
-                ActiveCyan.copy(alpha = boardAlpha.coerceIn(0.35f, 1f)),
-                PrimaryPurple.copy(alpha = 0.4f),
-                CardBorder
+                ActiveCyan.copy(alpha = 0.42f * boardAlpha.coerceIn(0.45f, 1f)),
+                Color.White.copy(alpha = 0.22f),
+                PrimaryPurple.copy(alpha = 0.38f),
+                CardBorder.copy(alpha = 0.95f)
             )
         ),
         cornerRadius = 22.dp
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(text = "◈", color = PrimaryPurple, fontSize = 14.sp)
@@ -686,109 +872,217 @@ private fun CommandPuzzleBoard(
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(renderedAspectRatio)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFF0E1530))
-                    .border(1.dp, ActiveCyan.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
+                    .aspectRatio(gridAspectRatio)
+                    .clip(RoundedCornerShape(boardCorner))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(0xFF14264A).copy(alpha = 0.92f),
+                                Color(0xFF0A132E),
+                                Color(0xFF060C20)
+                            )
+                        )
+                    )
+                    .border(
+                        width = 1.5.dp,
+                        brush = Brush.linearGradient(
+                            listOf(
+                                ActiveCyan.copy(alpha = 0.55f),
+                                PrimaryPurple.copy(alpha = 0.35f),
+                                ActiveCyan.copy(alpha = 0.28f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(boardCorner)
+                    )
             ) {
                 val density = LocalDensity.current
                 val isColorTargetBoard = visualType == "GRID_COLOR_TARGET"
-                val gridInset = if (isColorTargetBoard) 2.dp else 8.dp
-                val gap = if (isColorTargetBoard) 2.dp else 3.dp
+                val gridInset = if (isColorTargetBoard) 8.dp else 10.dp
+                val gap = 5.dp
                 val gapPx = density.run { gap.toPx() }
-                val usableW = density.run { maxWidth.toPx() } - gapPx * (cols + 1)
-                val usableH = density.run { maxHeight.toPx() } - gapPx * (rows + 1)
-                val innerCell = minOf(usableW / cols, usableH / rows)
-                Column(
-                    modifier = Modifier.padding(gridInset),
-                    verticalArrangement = Arrangement.spacedBy(gap)
-                ) {
-                    for (r in 0 until rows) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(gap)
-                        ) {
-                            for (c in 0 until cols) {
-                                val pos = GridPosition(r, c)
-                                val hasTarget = remainingTargets.contains(pos)
-                                val flashing = flashTargetAt == pos
-                                val highlight = highlightCell == pos
-                                val warned = warnCell == pos
-                                val isEmptyCell = isColorTargetBoard && pos == GridPosition(1, 1)
-                                val isRedTargetCell = isColorTargetBoard && hasTarget
-                                val pulse by animateFloatAsState(
-                                    targetValue = if (flashing) 1f else 0.55f,
-                                    animationSpec = tween(180, easing = FastOutSlowInEasing),
-                                    label = "targetPulse"
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                        .graphicsLayer { alpha = boardAlpha.coerceIn(0.4f, 1f) }
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(
-                                            when {
-                                                warned -> Color(0xFF291C18)
-                                                isRedTargetCell -> Color(0xFF5A1F2A)
-                                                isColorTargetBoard && isEmptyCell -> Color(0xFF152046)
-                                                isColorTargetBoard -> Color(0xFF164A8C)
-                                                else -> Color(0xFF152046)
+                val padPx = density.run { gridInset.toPx() }
+                val innerW = density.run { maxWidth.toPx() } - 2f * padPx
+                val innerH = density.run { maxHeight.toPx() } - 2f * padPx
+                val cellPxFromWidth = (innerW - gapPx * (cols - 1)) / cols.toFloat()
+                val cellPxFromHeight = (innerH - gapPx * (rows - 1)) / rows.toFloat()
+                val cellPx =
+                    min(cellPxFromWidth, cellPxFromHeight)
+                        .coerceAtLeast(density.run { 8.dp.toPx() })
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(gridInset)
+                    ) {
+                        val arm = 11.dp.toPx()
+                        val ins = 4.dp.toPx()
+                        val cyan = ActiveCyan.copy(alpha = 0.48f)
+                        val sw = 1.35.dp.toPx()
+                        drawLine(cyan, Offset(ins, ins), Offset(ins + arm, ins), sw)
+                        drawLine(cyan, Offset(ins, ins), Offset(ins, ins + arm), sw)
+                        drawLine(cyan, Offset(size.width - ins, ins), Offset(size.width - ins - arm, ins), sw)
+                        drawLine(cyan, Offset(size.width - ins, ins), Offset(size.width - ins, ins + arm), sw)
+                        drawLine(cyan, Offset(ins, size.height - ins), Offset(ins + arm, size.height - ins), sw)
+                        drawLine(cyan, Offset(ins, size.height - ins), Offset(ins, size.height - ins - arm), sw)
+                        drawLine(cyan, Offset(size.width - ins, size.height - ins), Offset(size.width - ins - arm, size.height - ins), sw)
+                        drawLine(cyan, Offset(size.width - ins, size.height - ins), Offset(size.width - ins, size.height - ins - arm), sw)
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(gridInset),
+                        verticalArrangement = Arrangement.spacedBy(gap)
+                    ) {
+                        for (r in 0 until rows) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f, fill = true),
+                                horizontalArrangement = Arrangement.spacedBy(gap),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                for (c in 0 until cols) {
+                                    val pos = GridPosition(r, c)
+                                    val hasTarget = remainingTargets.contains(pos)
+                                    val flashing = flashTargetAt == pos
+                                    val highlight = highlightCell == pos
+                                    val warned = warnCell == pos
+                                    // Subtle “path” accent only on the true center of a 3×3 color-target board.
+                                    // On 4×4 (and other sizes), (1,1) is not the center—do not dim that tile.
+                                    val isEmptyCell =
+                                        isColorTargetBoard &&
+                                            rows == 3 &&
+                                            cols == 3 &&
+                                            pos == GridPosition(1, 1)
+                                    val isRedTargetCell = isColorTargetBoard && hasTarget
+                                    val pulse by animateFloatAsState(
+                                        targetValue = if (flashing) 1f else 0.55f,
+                                        animationSpec = tween(180, easing = FastOutSlowInEasing),
+                                        label = "targetPulse"
+                                    )
+                                    val tileTexture =
+                                        if (!warned) {
+                                            Modifier.tileCircuitTexture(
+                                                when {
+                                                    isRedTargetCell -> Color(0xFFFF8C98).copy(alpha = 0.14f)
+                                                    isEmptyCell -> ActiveCyan.copy(alpha = 0.09f)
+                                                    else -> ActiveCyan.copy(alpha = 0.11f)
+                                                }
+                                            )
+                                        } else {
+                                            Modifier
+                                        }
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .graphicsLayer { alpha = boardAlpha.coerceIn(0.4f, 1f) }
+                                            .clip(RoundedCornerShape(tileCorner))
+                                            .background(
+                                                when {
+                                                    warned -> Color(0xFF291C18)
+                                                    isRedTargetCell -> Color(0xFF6E2434)
+                                                    isColorTargetBoard && isEmptyCell -> Color(0xFF121C38)
+                                                    isColorTargetBoard -> Color(0xFF1A4A8F)
+                                                    else -> Color(0xFF152046)
+                                                }
+                                            )
+                                            .then(tileTexture)
+                                            .border(
+                                                width = when {
+                                                    isRedTargetCell -> 2.dp
+                                                    warned -> 2.dp
+                                                    else -> 1.dp
+                                                },
+                                                color = when {
+                                                    warned -> PlaybackErrorOrange.copy(alpha = if (highlight) 0.98f else 0.82f)
+                                                    highlight -> CompletedGreen.copy(alpha = 0.75f)
+                                                    isRedTargetCell -> Color(0xFFFF5A6B).copy(alpha = if (flashing) 0.95f else 0.88f)
+                                                    flashing -> PrimaryPurple.copy(alpha = 0.95f)
+                                                    else -> ActiveCyan.copy(alpha = 0.18f)
+                                                },
+                                                shape = RoundedCornerShape(tileCorner)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        when {
+                                            isRedTargetCell -> {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .matchParentSize()
+                                                        .padding(4.dp)
+                                                        .background(
+                                                            Color(0xFFFF4D67).copy(alpha = 0.14f),
+                                                            RoundedCornerShape(8.dp)
+                                                        )
+                                                )
+                                                Text(
+                                                    text = "⌖",
+                                                    color = Color(0xFFFF7A88).copy(alpha = pulse.coerceIn(0.55f, 1f)),
+                                                    fontSize = 20.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
                                             }
-                                        )
-                                        .border(
-                                            if (warned) 2.dp else 1.dp,
-                                            when {
-                                                warned -> PlaybackErrorOrange.copy(alpha = if (highlight) 0.98f else 0.82f)
-                                                highlight -> CompletedGreen.copy(alpha = 0.75f)
-                                                isRedTargetCell -> Color(0xFFFF6B6B).copy(alpha = 0.78f)
-                                                flashing -> PrimaryPurple.copy(alpha = 0.95f)
-                                                else -> ActiveCyan.copy(alpha = 0.12f)
-                                            },
-                                            RoundedCornerShape(6.dp)
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (hasTarget && !isColorTargetBoard) {
-                                        Text(
-                                            text = "◎",
-                                            color = PrimaryPurple.copy(alpha = pulse),
-                                            fontSize = if (flashing) 18.sp else 14.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                            hasTarget && !isColorTargetBoard -> {
+                                                Text(
+                                                    text = "◎",
+                                                    color = PrimaryPurple.copy(alpha = pulse),
+                                                    fontSize = if (flashing) 18.sp else 14.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                val cellPx = innerCell.coerceAtLeast(density.run { 8.dp.toPx() })
-                val iconPx = density.run { 22.dp.toPx() }
-                val padPx = density.run { gridInset.toPx() }
-                val offX =
-                    padPx + gapPx + robotCol * cellPx + (cellPx - iconPx) / 2
-                val offY =
-                    padPx + gapPx + robotRow * cellPx + (cellPx - iconPx) / 2
+                    val iconPx = density.run { 34.dp.toPx() }
+                    val offX =
+                        padPx + robotCol * (cellPx + gapPx) + (cellPx - iconPx) / 2f
+                    val offY =
+                        padPx + robotRow * (cellPx + gapPx) + (cellPx - iconPx) / 2f
 
-                Box(
-                    modifier = Modifier.offset {
-                        IntOffset(offX.roundToInt(), offY.roundToInt())
-                    },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "◉",
-                        color = if (emphasizeRobotIssue) {
-                            PlaybackErrorOrange.copy(alpha = 0.95f)
-                        } else {
-                            CompletedGreen.copy(alpha = 0.92f)
-                        },
-                        fontSize = 22.sp,
-                        modifier = Modifier.graphicsLayer {
-                            rotationZ = rotationDegrees
-                        }
-                    )
+                    Box(
+                        modifier = Modifier
+                            .offset {
+                                IntOffset(offX.roundToInt(), offY.roundToInt())
+                            }
+                            .size(36.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(
+                                    if (emphasizeRobotIssue) {
+                                        PlaybackErrorOrange.copy(alpha = 0.16f)
+                                    } else {
+                                        ActiveCyan.copy(alpha = 0.14f)
+                                    },
+                                    CircleShape
+                                )
+                                .border(
+                                    width = 1.5.dp,
+                                    color = if (emphasizeRobotIssue) {
+                                        PlaybackErrorOrange.copy(alpha = 0.75f)
+                                    } else {
+                                        ActiveCyan.copy(alpha = 0.48f)
+                                    },
+                                    shape = CircleShape
+                                )
+                        )
+                        Text(
+                            text = "\uD83E\uDD16",
+                            fontSize = 18.sp,
+                            modifier = Modifier.graphicsLayer {
+                                rotationZ = rotationDegrees
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -805,7 +1099,6 @@ private fun PlaybackCommandSlots(
     maxReplayedInclusive: Int,
     objectiveMet: Boolean,
     goalFailureIndex: Int?,
-    sequenceMismatchStartIndex: Int?,
     compactMode: Boolean
 ) {
     val panelPadding = if (compactMode) 10.dp else 14.dp
@@ -826,8 +1119,11 @@ private fun PlaybackCommandSlots(
                 val rowIsGoalFailure = playbackComplete && goalFailureIndex == index && !rowIsError
                 val firstErrorIndex =
                     results.indexOfFirst { it.isErrorStep }.takeIf { it >= 0 }
+                // Only cascade “wrong” styling from real simulator failures or goal-not-met—not from
+                // comparison to [activity.correctSequence]. Alternate valid paths can diverge from the
+                // authored reference at step 0 and incorrectly painted every row orange otherwise.
                 val firstWrongIndex =
-                    listOfNotNull(firstErrorIndex, goalFailureIndex, sequenceMismatchStartIndex).minOrNull()
+                    listOfNotNull(firstErrorIndex, goalFailureIndex).minOrNull()
                 val rowWrongCascade = playbackComplete && firstWrongIndex != null && index >= firstWrongIndex
                 val isSkipped = playbackComplete && index > maxReplayedInclusive && !rowWrongCascade
                 val rowReplayed =
@@ -1073,7 +1369,8 @@ private fun CommandSequenceRevealBlock(
     var maxReplayedStepInclusive by remember(playbackGen) { mutableIntStateOf(-1) }
     var goalFailureHighlightIndex by remember(playbackGen) { mutableStateOf<Int?>(null) }
     var objectiveMetState by remember(playbackGen) { mutableStateOf(false) }
-    var sequenceMismatchStartIndex by remember(playbackGen) { mutableStateOf<Int?>(null) }
+    var showSuccessBalloons by remember(playbackGen) { mutableStateOf(false) }
+    var suppressPlaybackActionButtons by remember(playbackGen) { mutableStateOf(false) }
 
     LaunchedEffect(playbackGen, activity.id) {
         val results = appState.commandPlaybackResults
@@ -1089,7 +1386,6 @@ private fun CommandSequenceRevealBlock(
         maxReplayedStepInclusive = -1
         goalFailureHighlightIndex = null
         objectiveMetState = false
-        sequenceMismatchStartIndex = null
         delay(PLAYBACK_INTRO_MS.toLong())
         if (results.isEmpty()) {
             appState.showFinalResultState(
@@ -1121,6 +1417,7 @@ private fun CommandSequenceRevealBlock(
                             colAnim.animateTo(step.afterPosition.col.toFloat(), moveSpec)
                         }
                     }
+                    rotAnim.snapTo(step.afterDirection.rotationZDegrees())
                     delay(PLAYBACK_STEP_PAUSE_MS.toLong())
                 }
                 "turn right", "turn left" -> {
@@ -1155,31 +1452,31 @@ private fun CommandSequenceRevealBlock(
         explanationCaption = ""
         val objectiveMet = CommandSequencePlayback.objectiveReachedFromResults(results)
         objectiveMetState = objectiveMet
-        if (!objectiveMet && !appState.commandPlaybackUsesReferenceSolution) {
-            val referenceResults = CommandSequencePlayback.simulate(boardCfg, activity.correctSequence)
-            val sharedCount = minOf(results.size, referenceResults.size)
-            val mismatch = (0 until sharedCount).firstOrNull { idx ->
-                val userStep = results[idx]
-                val refStep = referenceResults[idx]
-                normalizeCommandToken(userStep.command) != normalizeCommandToken(refStep.command) ||
-                    userStep.afterPosition != refStep.afterPosition ||
-                    userStep.afterDirection != refStep.afterDirection ||
-                    userStep.remainingTargetsAfter != refStep.remainingTargetsAfter ||
-                    userStep.isErrorStep
-            } ?: run {
-                if (results.size != referenceResults.size) sharedCount else null
-            }
-            if (mismatch != null) {
-                sequenceMismatchStartIndex = mismatch
-            }
-        }
         summaryPrepared = CommandSequencePlayback.buildPlaybackFinalSummary(
             pendingAnswerMatchedKey = objectiveMet,
             results = results,
             finalRemainingCount = finalLeft
         )
         delay(PLAYBACK_FINISH_MS.toLong())
+
+        val eligibleSuccessBalloons =
+            !appState.lessonReviewMode &&
+                appState.pendingAnswerCorrect &&
+                !appState.commandPlaybackUsesReferenceSolution &&
+                CommandSequencePlayback.objectiveReachedFromResults(results) &&
+                !appState.commandSequenceSuccessBalloonsShownForAttempt
+
+        if (eligibleSuccessBalloons) {
+            suppressPlaybackActionButtons = true
+        }
         playbackComplete = true
+        if (eligibleSuccessBalloons) {
+            showSuccessBalloons = true
+            delay(2000)
+            showSuccessBalloons = false
+            appState.markCommandSequenceSuccessBalloonsShown()
+        }
+        suppressPlaybackActionButtons = false
     }
 
     val rr = rowAnim.value.toInt().coerceIn(0, boardCfg.rows - 1)
@@ -1197,13 +1494,15 @@ private fun CommandSequenceRevealBlock(
     val explainFormatError =
         explanationCaption.startsWith("Step ") && explanationCaption.contains("incorrect", ignoreCase = true)
 
-    val boardAspectRatioBoost = if (compactMode) 1.28f else 1f
-    val boardAspect = (boardCfg.cols.toFloat() / boardCfg.rows.toFloat()) * boardAspectRatioBoost
     val revealSpacing = if (compactMode) 8.dp else 10.dp
     val attemptWasCorrect = appState.pendingAnswerCorrect
     val viewingReference = appState.commandPlaybackUsesReferenceSolution
 
-    Column(verticalArrangement = Arrangement.spacedBy(revealSpacing)) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(revealSpacing)
+        ) {
         Text(
             text = if (viewingReference) "Auto playback (correct solution)" else "Auto playback",
             color = ActiveCyan,
@@ -1224,7 +1523,6 @@ private fun CommandSequenceRevealBlock(
             warnCell = boardWarnTile,
             emphasizeRobotIssue = errorStepEmphasis,
             modifier = Modifier.fillMaxWidth(),
-            boardAspectRatio = boardAspect,
             visualType = activity.visualType
         )
         PlaybackCommandSlots(
@@ -1235,7 +1533,6 @@ private fun CommandSequenceRevealBlock(
             maxReplayedInclusive = maxReplayedStepInclusive,
             objectiveMet = objectiveMetState,
             goalFailureIndex = goalFailureHighlightIndex,
-            sequenceMismatchStartIndex = sequenceMismatchStartIndex,
             compactMode = compactMode
         )
         PlaybackExplanationCard(
@@ -1243,7 +1540,7 @@ private fun CommandSequenceRevealBlock(
             isError = (errorStepEmphasis || goalFailureShowing) ||
                 (explainFormatError && explanationCaption.isNotBlank())
         )
-        if (playbackComplete && summaryPrepared != null) {
+        if (playbackComplete && summaryPrepared != null && !suppressPlaybackActionButtons) {
             val actionSpacing = if (compactMode) 6.dp else 8.dp
             Column(verticalArrangement = Arrangement.spacedBy(actionSpacing)) {
                 NeonOutlineRowButton(
@@ -1252,37 +1549,56 @@ private fun CommandSequenceRevealBlock(
                     accent = ActiveCyan,
                     compactMode = compactMode
                 )
-                if (!attemptWasCorrect && !viewingReference) {
-                    NeonOutlineRowButton(
-                        text = "Show correct playback",
-                        onClick = { appState.requestCorrectCommandPlayback() },
-                        accent = ActiveCyan,
-                        compactMode = compactMode
-                    )
-                }
-                if (attemptWasCorrect) {
-                    GradientButton(text = "Continue to result") {
-                        summaryPrepared?.let { appState.showFinalResultState(it) }
+                if (appState.lessonReviewMode) {
+                    GradientButton(text = "Next question") {
+                        appState.continueFromCompletedReviewToNextOrExit()
                     }
                     NeonOutlineRowButton(
-                        text = "Continue lesson",
+                        text = "Back to lesson path",
                         onClick = { appState.backFromLessonActivity() },
                         accent = TextMuted,
                         compactMode = compactMode
                     )
                 } else {
-                    GradientButton(text = "Retry activity") {
-                        appState.retryCurrentActivity()
+                    if (!attemptWasCorrect && !viewingReference) {
+                        NeonOutlineRowButton(
+                            text = "Show correct playback",
+                            onClick = { appState.requestCorrectCommandPlayback() },
+                            accent = ActiveCyan,
+                            compactMode = compactMode
+                        )
                     }
-                    NeonOutlineRowButton(
-                        text = "Back to lesson",
-                        onClick = { appState.backFromLessonActivity() },
-                        accent = TextMuted,
-                        compactMode = compactMode
-                    )
+                    if (attemptWasCorrect) {
+                        val lastActivity =
+                            appState.currentActivityIndex >= appState.getActivitiesForCurrentLesson().lastIndex
+                        GradientButton(text = if (lastActivity) "Finish lesson" else "Next question") {
+                            appState.proceedAfterFinalResult()
+                        }
+                        NeonOutlineRowButton(
+                            text = "Continue lesson",
+                            onClick = { appState.backFromLessonActivity() },
+                            accent = TextMuted,
+                            compactMode = compactMode
+                        )
+                    } else {
+                        GradientButton(text = "Retry activity") {
+                            appState.retryCurrentActivity()
+                        }
+                        NeonOutlineRowButton(
+                            text = "Back to lesson",
+                            onClick = { appState.backFromLessonActivity() },
+                            accent = TextMuted,
+                            compactMode = compactMode
+                        )
+                    }
                 }
             }
         }
+        }
+        CommandSequenceSuccessOverlay(
+            visible = showSuccessBalloons,
+            modifier = Modifier.matchParentSize()
+        )
     }
 }
 
@@ -1290,56 +1606,130 @@ private fun CommandSequenceRevealBlock(
 private fun CommandSlotPanel(
     slots: List<String?>,
     onSlotClick: (Int) -> Unit,
-    compactMode: Boolean = false
+    compactMode: Boolean = false,
+    readOnly: Boolean = false
 ) {
-    val panelPadding = if (compactMode) 10.dp else 14.dp
-    val rowSpacing = if (compactMode) 6.dp else 8.dp
-    val rowVerticalPadding = if (compactMode) 9.dp else 12.dp
+    val panelPadding = if (compactMode) 12.dp else 16.dp
+    val rowSpacing = if (compactMode) 8.dp else 10.dp
+    val rowVerticalPadding = if (compactMode) 10.dp else 12.dp
+    val nextFillIndex = slots.indexOfFirst { it == null }.takeIf { it >= 0 }
+    val slotCorner = 12.dp
+    val slotCornerPx = LocalDensity.current.run { slotCorner.toPx() }
     GlassCard(
-        borderBrush = Brush.linearGradient(listOf(Color.White.copy(alpha = 0.2f), CardBorder)),
-        cornerRadius = 18.dp
+        borderBrush = Brush.linearGradient(
+            listOf(
+                ActiveCyan.copy(alpha = 0.38f),
+                Color.White.copy(alpha = 0.12f),
+                PrimaryPurple.copy(alpha = 0.3f),
+                CardBorder
+            )
+        ),
+        cornerRadius = 20.dp
     ) {
         Column(
             modifier = Modifier.padding(panelPadding),
             verticalArrangement = Arrangement.spacedBy(rowSpacing)
         ) {
-            Text(
-                "Your program",
-                color = TextMuted,
-                fontSize = if (compactMode) 11.sp else 12.sp,
-                fontWeight = FontWeight.Medium
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "</>",
+                    color = ActiveCyan,
+                    fontSize = if (compactMode) 13.sp else 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = "Your program",
+                    color = TextPrimary,
+                    fontSize = if (compactMode) 14.sp else 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.2.sp
+                )
+            }
             slots.forEachIndexed { index, cmd ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(
-                        text = "${index + 1}",
-                        color = TextMuted,
-                        fontSize = 13.sp,
-                        modifier = Modifier.width(22.dp),
-                        textAlign = TextAlign.End
-                    )
+                    Box(
+                        modifier = Modifier
+                            .width(30.dp)
+                            .height(28.dp)
+                            .clip(StepHexShape)
+                            .background(CardSurface.copy(alpha = 0.88f))
+                            .border(1.dp, ActiveCyan.copy(alpha = 0.55f), StepHexShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${index + 1}",
+                            color = ActiveCyan,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    val slotBorder: Modifier = when {
+                        cmd != null ->
+                            Modifier.border(1.dp, ActiveCyan.copy(alpha = 0.5f), RoundedCornerShape(slotCorner))
+                        index == nextFillIndex ->
+                            Modifier.border(2.dp, ActiveCyan.copy(alpha = 0.88f), RoundedCornerShape(slotCorner))
+                        else ->
+                            Modifier.slotDashedRing(TextMuted.copy(alpha = 0.42f), slotCornerPx)
+                    }
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color.Black.copy(alpha = 0.28f))
-                            .border(
-                                1.dp,
-                                if (cmd == null) CardBorder.copy(alpha = 0.45f) else ActiveCyan.copy(alpha = 0.45f),
-                                RoundedCornerShape(10.dp)
+                            .clip(RoundedCornerShape(slotCorner))
+                            .background(
+                                if (cmd == null) {
+                                    Color(0xFF0A142A).copy(alpha = 0.72f)
+                                } else {
+                                    Color(0xFF0E1E3D).copy(alpha = 0.88f)
+                                }
                             )
-                            .clickable { onSlotClick(index) }
+                            .then(slotBorder)
+                            .clickable(enabled = !readOnly) { onSlotClick(index) }
                             .padding(horizontal = 12.dp, vertical = rowVerticalPadding)
                     ) {
-                        Text(
-                            text = cmd ?: "tap a command below to fill",
-                            color = if (cmd == null) TextMuted.copy(alpha = 0.65f) else TextPrimary,
-                            fontSize = if (compactMode) 13.sp else 14.sp
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = cmd
+                                    ?: if (readOnly) "—"
+                                    else "tap a command below to fill",
+                                color = if (cmd == null) {
+                                    TextMuted.copy(alpha = 0.68f)
+                                } else {
+                                    TextPrimary
+                                },
+                                fontSize = if (compactMode) 13.sp else 14.sp,
+                                fontWeight = if (cmd == null) FontWeight.Normal else FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(3.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                repeat(2) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        repeat(3) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(3.dp)
+                                                    .clip(CircleShape)
+                                                    .background(TextMuted.copy(alpha = 0.28f))
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1356,17 +1746,40 @@ private fun CommandChipRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(scroll),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .horizontalScroll(scroll)
+            .padding(top = 4.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         commands.forEach { cmd ->
-            Box(
+            val glyph = when (cmd.lowercase()) {
+                "move forward" -> "↑"
+                "turn right" -> "↻"
+                "select red" -> "⌖"
+                "turn left" -> "↺"
+                else -> "•"
+            }
+            Row(
                 modifier = Modifier
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = RoundedCornerShape(14.dp),
+                        ambientColor = Color.Black.copy(alpha = 0.28f),
+                        spotColor = Color.Black.copy(alpha = 0.28f)
+                    )
                     .clip(RoundedCornerShape(14.dp))
-                    .background(Color.White.copy(alpha = 0.95f))
+                    .background(Color.White.copy(alpha = 0.98f))
+                    .border(1.dp, Color(0xFFE2E8F5), RoundedCornerShape(14.dp))
                     .clickable { onCommandClick(cmd) }
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Text(
+                    text = glyph,
+                    color = Color(0xFF223356),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
                 Text(
                     text = cmd,
                     color = Color(0xFF18224A),

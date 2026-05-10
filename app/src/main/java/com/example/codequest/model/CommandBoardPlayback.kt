@@ -1,8 +1,11 @@
 package com.example.codequest.model
 
+import kotlin.math.abs
+
 /** Row / column index on the puzzle grid. */
 data class GridPosition(val row: Int, val col: Int)
 
+/** Screen-space grid: row 0 is the **top** row; moving [UP] decreases the row index. */
 enum class Direction {
     UP,
     RIGHT,
@@ -10,7 +13,7 @@ enum class Direction {
     LEFT
 }
 
-/** Degrees for [androidx.compose.ui.graphics.graphicsLayer] rotation with default icon facing RIGHT. */
+/** Degrees for [androidx.compose.ui.graphics.graphicsLayer]; neutral pose faces [Direction.RIGHT]. */
 fun Direction.rotationZDegrees(): Float = when (this) {
     Direction.RIGHT -> 0f
     Direction.DOWN -> 90f
@@ -218,13 +221,36 @@ object CommandSequencePlayback {
         finalRemainingCount: Int
     ): String {
         val missed = maxOf(finalRemainingCount, 0)
-        val firstLogicErrorText = results.firstOrNull { it.isErrorStep }?.errorMessage
+        val firstWrongSelectAdjacentMessage =
+            results.firstOrNull { step ->
+                step.isErrorStep &&
+                    normalizeCommandToken(step.command) == SELECT_RED &&
+                    step.errorMessage?.contains("wrong tile", ignoreCase = true) == true
+            }?.let { step ->
+                val pos = step.beforePosition
+                val stillNeeded = step.remainingTargetsAfter
+                val besideRed = stillNeeded.any { t ->
+                    abs(t.row - pos.row) + abs(t.col - pos.col) == 1
+                }
+                if (besideRed) {
+                    "Almost there — you're beside the red tile, not on it. Try: move forward ×3 up the " +
+                        "right edge, turn left, move forward ×2 onto red, then select red."
+                } else {
+                    null
+                }
+            }
 
         return when {
             pendingAnswerMatchedKey && missed == 0 ->
                 "Red target found and selected."
 
-            firstLogicErrorText?.contains("selected the wrong tile", ignoreCase = true) == true ->
+            firstWrongSelectAdjacentMessage != null ->
+                firstWrongSelectAdjacentMessage
+
+            results.any {
+                it.isErrorStep &&
+                    it.errorMessage?.contains("selected the wrong tile", ignoreCase = true) == true
+            } ->
                 "The robot selected the wrong tile."
 
             missed > 0 ->

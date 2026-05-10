@@ -139,16 +139,40 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
 
         QuestHeroPlaceholder(courseIconText = course.icon)
 
-        FocusLessonActivitiesCard(focusLesson = focusLesson)
+        FocusLessonActivitiesCard(
+            focusLesson = focusLesson,
+            appState = appState,
+            courseId = course.id
+        )
 
         val canStartFocus = focusLesson != null &&
             focusLesson.id in appState.unlockedLessonIds &&
             focusLesson.id !in appState.completedLessonIds
-        GradientButton(text = if (focusLesson?.id in appState.completedLessonIds) "Review lesson" else "Start") {
+        val primaryLessonButtonLabel = when {
+            focusLesson == null -> "Start"
+            focusLesson.id in appState.completedLessonIds -> "Review lesson"
+            appState.lessonHasAnyCompletedActivity(focusLesson) && appState.lessonHasIncompleteActivity(focusLesson) ->
+                "Continue lesson"
+            else -> "Start"
+        }
+        GradientButton(text = primaryLessonButtonLabel) {
             if (focusLesson != null && focusLesson.id in appState.unlockedLessonIds) {
                 appState.selectCourseDetailLesson(focusLesson.id)
                 appState.startLessonFromCourseDetail()
             }
+        }
+
+        appState.lessonEntryBlockedNotice?.let { notice ->
+            Text(
+                text = notice,
+                color = ActiveCyan.copy(alpha = 0.92f),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                textAlign = TextAlign.Center
+            )
         }
 
         Text(
@@ -197,9 +221,9 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
 
         Text(
             text = if (!canStartFocus && focusLesson != null && focusLesson.id in appState.completedLessonIds) {
-                "Completed lesson — tap Start again to redo from the beginning."
+                "Completed lesson — questions you already solved cannot be retaken."
             } else {
-                "Choose a lesson, then tap Start to open the guided activity flow."
+                "Choose a lesson, then tap Start to continue where you left off (completed questions stay locked)."
             },
             color = TextMuted.copy(alpha = 0.82f),
             fontSize = 12.sp,
@@ -307,7 +331,11 @@ private fun QuestHeroPlaceholder(courseIconText: String) {
 }
 
 @Composable
-private fun FocusLessonActivitiesCard(focusLesson: Lesson?) {
+private fun FocusLessonActivitiesCard(
+    focusLesson: Lesson?,
+    appState: CodeQuestAppState,
+    courseId: String
+) {
     GlassCard(cornerRadius = 22.dp) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -336,55 +364,75 @@ private fun FocusLessonActivitiesCard(focusLesson: Lesson?) {
                 fontSize = 13.sp,
                 lineHeight = 18.sp
             )
+            val nextIdx = appState.firstIncompleteActivityIndex(focusLesson)
+            val lessonDone = focusLesson.id in appState.completedLessonIds
             focusLesson.activities.forEachIndexed { i, act ->
+                val completed = act.id in appState.completedActivityIds
+                val isCurrent = !lessonDone && nextIdx >= 0 && i == nextIdx
+                val isLocked = !completed && !isCurrent
+                val statusText = when {
+                    completed -> "Completed — replay"
+                    isCurrent -> "Continue"
+                    else -> "Not started"
+                }
+                val rowHighlight = isCurrent
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
                         .background(
-                            if (i == 0) ActiveCyan.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.04f)
+                            if (rowHighlight) ActiveCyan.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.04f)
                         )
                         .border(
                             1.dp,
-                            if (i == 0) ActiveCyan.copy(alpha = 0.35f) else CardBorder.copy(alpha = 0.4f),
+                            if (rowHighlight) ActiveCyan.copy(alpha = 0.35f) else CardBorder.copy(alpha = 0.4f),
                             RoundedCornerShape(14.dp)
                         )
+                        .clickable(
+                            enabled = (completed || isCurrent) && focusLesson.id in appState.unlockedLessonIds
+                        ) {
+                            appState.selectCourseDetailLesson(focusLesson.id)
+                            if (completed) {
+                                appState.openCompletedActivityReview(courseId, focusLesson.id, i)
+                            } else {
+                                appState.startLessonFromCourseDetail()
+                            }
+                        }
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (i == 0) "Guided practice" else "Activity ${i + 1}",
-                            color = if (i == 0) TextPrimary else TextMuted,
+                            text = if (i == 0) "Guided practice" else "Question ${i + 1}",
+                            color = if (rowHighlight) TextPrimary else TextMuted,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = act.prompt,
-                            color = if (i == 0) TextMuted else TextMuted.copy(alpha = 0.7f),
+                            color = if (rowHighlight) TextMuted else TextMuted.copy(alpha = 0.7f),
                             fontSize = 12.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(22.dp)
-                            .clip(CircleShape)
-                            .border(
-                                2.dp,
-                                if (i == 0) ActiveCyan else TextMuted.copy(alpha = 0.35f),
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (i == 0) {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(ActiveCyan)
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = statusText,
+                            color = when {
+                                completed -> CompletedGreen.copy(alpha = 0.9f)
+                                isCurrent -> ActiveCyan
+                                else -> TextMuted.copy(alpha = 0.75f)
+                            },
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (isLocked) {
+                            Text(
+                                text = "Locked",
+                                color = TextMuted.copy(alpha = 0.55f),
+                                fontSize = 10.sp
                             )
                         }
                     }
