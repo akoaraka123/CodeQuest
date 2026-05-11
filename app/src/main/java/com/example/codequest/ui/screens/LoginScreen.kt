@@ -30,6 +30,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.codequest.data.LocalLoginAttemptRepository
+import com.example.codequest.data.LocalPasswordResetRepository
 import com.example.codequest.data.LocalUserRepository
 import com.example.codequest.model.AppUser
 import com.example.codequest.model.UserRole
@@ -50,6 +52,7 @@ private val UsernamePasswordRegex = Regex("^[A-Za-z0-9Ññ]+$")
 fun LoginScreen(
     onLoginSuccess: (AppUser) -> Unit,
     onRegisterClick: () -> Unit,
+    onForgotPasswordClick: () -> Unit,
     successMessage: String? = null,
     onSuccessMessageShown: () -> Unit = {}
 ) {
@@ -117,17 +120,34 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         GradientButton(text = "Login") {
-            if (containsInvalidLoginCharacters(username, password)) {
+            if (username.trim().isEmpty() || password.isEmpty()) {
+                error = "Please input username or password."
+            } else if (containsInvalidLoginCharacters(username, password)) {
                 error = "Special characters are not allowed. Ñ and ñ are allowed."
+            } else if (LocalLoginAttemptRepository.isBlocked(username)) {
+                error = "Too many failed attempts. Please use Forgot Password or contact the admin."
             } else {
                 val u = LocalUserRepository.authenticate(username, password)
                 if (u != null) {
+                    LocalLoginAttemptRepository.reset(username)
                     onLoginSuccess(u)
                 } else {
-                    error = "Invalid username or password."
+                    val attemptsLeft = LocalLoginAttemptRepository.recordFailure(username)
+                    error = if (attemptsLeft == 0) {
+                        "Too many failed attempts. Please use Forgot Password or contact the admin."
+                    } else {
+                        "Invalid username or password. Attempts left: $attemptsLeft"
+                    }
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
+        AuthActionText(
+            leadingText = "",
+            actionText = "Forgot Password?",
+            onClick = onForgotPasswordClick
+        )
 
         Spacer(modifier = Modifier.height(14.dp))
         AuthActionText(
@@ -143,6 +163,94 @@ fun LoginScreen(
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+fun ForgotPasswordScreen(
+    onRequestSubmitted: () -> Unit,
+    onLoginClick: () -> Unit
+) {
+    var fullName by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(BackgroundStart, BackgroundEnd)))
+            .statusBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
+    ) {
+        AuthHeader(message = "Request password help")
+        Spacer(modifier = Modifier.height(30.dp))
+
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = fullName,
+                    onValueChange = {
+                        fullName = it
+                        error = null
+                    },
+                    label = { Text("Full Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = {
+                        username = it
+                        error = null
+                    },
+                    label = { Text("Username optional") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                error?.let {
+                    Text(
+                        text = it,
+                        color = PrimaryPurple,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        GradientButton(text = "Submit Request") {
+            val trimmedFullName = fullName.trim()
+            val trimmedUsername = username.trim()
+
+            error = when {
+                trimmedFullName.isEmpty() -> "Full Name cannot be empty."
+                !FullNameRegex.matches(fullName) ->
+                    "Full name can only contain letters, spaces, Ñ, and ñ."
+                trimmedUsername.isNotEmpty() && !UsernamePasswordRegex.matches(trimmedUsername) ->
+                    "Username can only contain letters, numbers, Ñ, and ñ."
+                else -> null
+            }
+
+            if (error == null) {
+                LocalPasswordResetRepository.addRequest(
+                    fullName = trimmedFullName,
+                    username = trimmedUsername
+                )
+                onRequestSubmitted()
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+        AuthActionText(
+            leadingText = "",
+            actionText = "Back to Login",
+            onClick = onLoginClick
         )
     }
 }
@@ -318,11 +426,13 @@ private fun AuthActionText(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "$leadingText ",
-            color = TextMuted,
-            fontSize = 14.sp
-        )
+        if (leadingText.isNotBlank()) {
+            Text(
+                text = "$leadingText ",
+                color = TextMuted,
+                fontSize = 14.sp
+            )
+        }
         Text(
             text = actionText,
             color = PrimaryCyan,

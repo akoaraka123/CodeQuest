@@ -1,6 +1,7 @@
 package com.example.codequest.ui.screens.admin
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,8 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -29,6 +32,8 @@ import com.example.codequest.ui.components.GlassCard
 import com.example.codequest.ui.theme.ActiveCyan
 import com.example.codequest.ui.theme.BackgroundEnd
 import com.example.codequest.ui.theme.BackgroundStart
+import com.example.codequest.ui.theme.CardBorder
+import com.example.codequest.ui.theme.CardSurface
 import com.example.codequest.ui.theme.PrimaryCyan
 import com.example.codequest.ui.theme.PrimaryPurple
 import com.example.codequest.ui.theme.TextMuted
@@ -41,6 +46,8 @@ fun AdminDashboardScreen(
     totalCourses: Int,
     totalLessons: Int,
     averageXp: Int,
+    hasUnreadNotifications: Boolean,
+    onNotificationsClick: () -> Unit,
     onLogout: () -> Unit
 ) {
     Column(
@@ -60,15 +67,38 @@ fun AdminDashboardScreen(
                 Text("Admin Dashboard", color = TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Text("CodeQuest Management", color = PrimaryCyan, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             }
-            Text(
-                text = "Logout",
-                color = ActiveCyan,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable { onLogout() }
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.clickable { onNotificationsClick() }) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(CardSurface.copy(alpha = 0.7f))
+                            .border(1.dp, CardBorder, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "🔔", fontSize = 15.sp)
+                    }
+                    if (hasUnreadNotifications) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(PrimaryPurple)
+                        )
+                    }
+                }
+                Text(
+                    text = "Logout",
+                    color = ActiveCyan,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onLogout() }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
         }
         Spacer(modifier = Modifier.height(20.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

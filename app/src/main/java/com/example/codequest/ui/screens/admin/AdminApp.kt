@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.codequest.data.LocalPasswordResetRepository
 import com.example.codequest.data.LocalUserRepository
 import com.example.codequest.data.LocalContentRepository
 import com.example.codequest.model.UserRole
@@ -44,6 +45,7 @@ private sealed class AdminRoute {
     data class Tab(val tab: AdminTab) : AdminRoute()
     data class UserDetail(val userId: String) : AdminRoute()
     data class AddEditUser(val userId: String?) : AdminRoute()
+    data object Notifications : AdminRoute()
 }
 
 @Composable
@@ -57,6 +59,7 @@ fun AdminApp(
             is AdminRoute.UserDetail -> AdminRoute.Tab(AdminTab.USERS)
             is AdminRoute.AddEditUser ->
                 if (r.userId != null) AdminRoute.UserDetail(r.userId) else AdminRoute.Tab(AdminTab.USERS)
+            AdminRoute.Notifications -> AdminRoute.Tab(AdminTab.DASHBOARD)
             is AdminRoute.Tab -> r
         }
     }
@@ -72,6 +75,7 @@ fun AdminApp(
                     tab = r.tab,
                     onOpenUser = { route = AdminRoute.UserDetail(it) },
                     onAddUser = { route = AdminRoute.AddEditUser(null) },
+                    onOpenNotifications = { route = AdminRoute.Notifications },
                     onLogout = onLogout
                 )
                 AdminBottomBar(
@@ -107,6 +111,11 @@ fun AdminApp(
                     }
                 )
             }
+            AdminRoute.Notifications -> {
+                AdminNotificationsScreen(
+                    onBack = { route = AdminRoute.Tab(AdminTab.DASHBOARD) }
+                )
+            }
         }
     }
 }
@@ -116,6 +125,7 @@ private fun AdminTabContent(
     tab: AdminTab,
     onOpenUser: (String) -> Unit,
     onAddUser: () -> Unit,
+    onOpenNotifications: () -> Unit,
     onLogout: () -> Unit
 ) {
     val students = LocalUserRepository.users.filter { it.role == UserRole.STUDENT }
@@ -134,6 +144,8 @@ private fun AdminTabContent(
                 totalCourses = courses.size,
                 totalLessons = totalLessons,
                 averageXp = avgXp,
+                hasUnreadNotifications = LocalPasswordResetRepository.hasUnreadRequests(),
+                onNotificationsClick = onOpenNotifications,
                 onLogout = onLogout
             )
             AdminTab.USERS -> AdminUserManagementScreen(
