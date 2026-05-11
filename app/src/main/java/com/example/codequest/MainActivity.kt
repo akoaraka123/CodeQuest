@@ -16,6 +16,7 @@ import com.example.codequest.state.AuthState
 import com.example.codequest.state.rememberCodeQuestAppState
 import com.example.codequest.ui.screens.CodeQuestApp
 import com.example.codequest.ui.screens.LoginScreen
+import com.example.codequest.ui.screens.RegisterScreen
 import com.example.codequest.ui.screens.admin.AdminApp
 import com.example.codequest.ui.theme.CodeQuestTheme
 
@@ -26,23 +27,47 @@ class MainActivity : ComponentActivity() {
         setContent {
             val studentAppState = rememberCodeQuestAppState()
             var authState by remember { mutableStateOf<AuthState>(AuthState.LoggedOut) }
+            var loggedOutRoute by remember { mutableStateOf(LoggedOutRoute.Login) }
+            var loginMessage by remember { mutableStateOf<String?>(null) }
 
             CodeQuestTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
                     when (val session = authState) {
-                        AuthState.LoggedOut -> LoginScreen(
-                            onLoginSuccess = { user ->
-                                when (user.role) {
-                                    UserRole.STUDENT -> {
-                                        studentAppState.applyStudentSession(user)
-                                        authState = AuthState.LoggedInStudent(user.id)
+                        AuthState.LoggedOut -> {
+                            when (loggedOutRoute) {
+                                LoggedOutRoute.Login -> LoginScreen(
+                                    onLoginSuccess = { user ->
+                                        when (user.role) {
+                                            UserRole.STUDENT -> {
+                                                studentAppState.applyStudentSession(user)
+                                                authState = AuthState.LoggedInStudent(user.id)
+                                            }
+                                            UserRole.ADMIN -> {
+                                                authState = AuthState.LoggedInAdmin(user.id)
+                                            }
+                                        }
+                                    },
+                                    onRegisterClick = {
+                                        loginMessage = null
+                                        loggedOutRoute = LoggedOutRoute.Register
+                                    },
+                                    successMessage = loginMessage,
+                                    onSuccessMessageShown = {
+                                        loginMessage = null
                                     }
-                                    UserRole.ADMIN -> {
-                                        authState = AuthState.LoggedInAdmin(user.id)
+                                )
+                                LoggedOutRoute.Register -> RegisterScreen(
+                                    onRegisterSuccess = {
+                                        loginMessage = "Account created successfully. Please log in."
+                                        loggedOutRoute = LoggedOutRoute.Login
+                                    },
+                                    onLoginClick = {
+                                        loginMessage = null
+                                        loggedOutRoute = LoggedOutRoute.Login
                                     }
-                                }
+                                )
                             }
-                        )
+                        }
                         is AuthState.LoggedInStudent -> CodeQuestApp(
                             appState = studentAppState,
                             onLogout = {
@@ -59,4 +84,9 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+private enum class LoggedOutRoute {
+    Login,
+    Register
 }
