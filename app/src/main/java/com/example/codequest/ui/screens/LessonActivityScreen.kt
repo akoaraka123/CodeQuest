@@ -37,6 +37,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -81,6 +83,7 @@ import com.example.codequest.model.ActivityItem
 import com.example.codequest.model.CommandSequencePlayback
 import com.example.codequest.model.ActivityType
 import com.example.codequest.model.effectiveProcessSteps
+import com.example.codequest.model.isFillInBlank
 import com.example.codequest.model.isTicLesson1MultipleChoice
 import com.example.codequest.model.Direction
 import com.example.codequest.model.GridPosition
@@ -101,6 +104,7 @@ import com.example.codequest.ui.components.GlassCard
 import com.example.codequest.ui.components.GradientButton
 import com.example.codequest.ui.components.GuidedProcessRevealCard
 import com.example.codequest.ui.components.QuestionCardHeader
+import com.example.codequest.ui.components.RobotLesson2DemoGuideScreen
 import com.example.codequest.ui.theme.ActiveCyan
 import com.example.codequest.ui.theme.BackgroundEnd
 import com.example.codequest.ui.theme.BackgroundStart
@@ -187,6 +191,43 @@ private fun Modifier.slotDashedRing(color: Color, cornerPx: Float): Modifier = d
 }
 
 @Composable
+private fun FillInBlankAnswerField(
+    value: String,
+    placeholder: String,
+    readOnly: Boolean,
+    onValueChange: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Fill in the blank",
+            color = TextPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            readOnly = readOnly,
+            placeholder = { Text(placeholder, color = TextMuted) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = false,
+            minLines = 1,
+            maxLines = 3,
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                focusedBorderColor = ActiveCyan,
+                unfocusedBorderColor = CardBorder,
+                cursorColor = ActiveCyan,
+                focusedContainerColor = Color.White.copy(alpha = 0.06f),
+                unfocusedContainerColor = Color.White.copy(alpha = 0.04f)
+            )
+        )
+    }
+}
+
+@Composable
 private fun CommandSequenceCheckButton(
     enabled: Boolean,
     onClick: () -> Unit
@@ -245,6 +286,20 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
     }
 
     val state = appState.lessonInteractionState
+    if (state == LessonInteractionState.ROBOT_DEMO_GUIDE && lesson.id == "tic-l2") {
+        RobotLesson2DemoGuideScreen(
+            step = appState.robotDemoGuideStep,
+            totalSteps = appState.robotDemoGuideStepCount(),
+            onNext = { appState.advanceRobotDemoGuide() },
+            onSkip = { appState.completeRobotDemoGuide() },
+            onBack = { showLeaveDialog = true }
+        )
+        if (showLeaveDialog) {
+            LeaveLessonDialog(onDismiss = { showLeaveDialog = false }, onLeave = { appState.backFromLessonActivity() })
+        }
+        return
+    }
+
     val revealSteps = appState.currentRevealSteps()
     val compactScreen = LocalConfiguration.current.screenHeightDp <= 820
     val rootVerticalSpacing = if (compactScreen) 8.dp else 12.dp
@@ -292,6 +347,7 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
         }
 
         when (state) {
+            LessonInteractionState.ROBOT_DEMO_GUIDE -> Unit
             LessonInteractionState.ACTIVITY -> {
                 item {
                     TaskHeaderSection(activity = activity)
@@ -331,6 +387,26 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                         CommandSequenceCheckButton(
                             enabled = appState.activityReadyForCheck()
                         ) { appState.submitActivityCheck() }
+                    }
+                } else if (activity.isFillInBlank()) {
+                    activity.codeSnippet?.let { snippet ->
+                        item { GlassCard { CodeBlockCard(code = snippet) } }
+                    }
+                    item {
+                        FillInBlankAnswerField(
+                            value = appState.fillInAnswer,
+                            placeholder = activity.fillInPlaceholder ?: "Type your fix here…",
+                            readOnly = appState.lessonReviewMode,
+                            onValueChange = appState::updateFillInAnswer
+                        )
+                    }
+                    if (!appState.lessonReviewMode) {
+                        item {
+                            GradientButton(
+                                text = "Check",
+                                enabled = appState.activityReadyForCheck()
+                            ) { appState.submitActivityCheck() }
+                        }
                     }
                 } else {
                     activity.codeSnippet?.let { snippet ->
@@ -387,6 +463,32 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
             LessonInteractionState.FEEDBACK -> {
                 item {
                     TaskHeaderSection(activity = activity)
+                }
+                if (appState.lessonReviewMode && activity.isFillInBlank()) {
+                    item {
+                        GlassCard {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "Your answer",
+                                    color = ActiveCyan,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = appState.fillInAnswer.ifBlank { "—" },
+                                    color = TextPrimary,
+                                    fontSize = 15.sp
+                                )
+                                if (!appState.pendingAnswerCorrect && activity.fillInAcceptedAnswers.isNotEmpty()) {
+                                    Text(
+                                        text = "Accepted fix: ${activity.fillInAcceptedAnswers.first()}",
+                                        color = CompletedGreen,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
                 if (appState.lessonReviewMode && activity.requiresMultipleChoice()) {
                     items(count = activity.options.size) { index ->
@@ -494,6 +596,15 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                                     appState.showProcessRevealFromFeedback()
                                 } else {
                                     appState.showFinalResultState()
+                                }
+                            }
+                        } else if (activity.isFillInBlank()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                GradientButton(text = "Try Again") {
+                                    appState.lesson1TryAgainAfterWrong()
+                                }
+                                GradientButton(text = "View Correct Answer") {
+                                    appState.showProcessRevealFromFeedback()
                                 }
                             }
                         } else {
@@ -811,6 +922,39 @@ private fun TaskHeaderSection(activity: ActivityItem, muted: Boolean = false) {
             )
         }
     }
+}
+
+@Composable
+fun CommandPuzzleBoardForGuide(
+    boardCfg: PlaybackBoardConfig,
+    robotRow: Float,
+    robotCol: Float,
+    rotationDegrees: Float,
+    remainingTargets: Set<GridPosition>,
+    topStatusText: String,
+    trailingHint: String?,
+    flashTargetAt: GridPosition?,
+    highlightCell: GridPosition?,
+    warnCell: GridPosition?,
+    emphasizeRobotIssue: Boolean = false,
+    visualType: String? = null,
+    modifier: Modifier = Modifier
+) {
+    CommandPuzzleBoard(
+        boardCfg = boardCfg,
+        robotRow = robotRow,
+        robotCol = robotCol,
+        rotationDegrees = rotationDegrees,
+        remainingTargets = remainingTargets,
+        topStatusText = topStatusText,
+        trailingHint = trailingHint,
+        flashTargetAt = flashTargetAt,
+        highlightCell = highlightCell,
+        warnCell = warnCell,
+        emphasizeRobotIssue = emphasizeRobotIssue,
+        visualType = visualType,
+        modifier = modifier
+    )
 }
 
 @Composable

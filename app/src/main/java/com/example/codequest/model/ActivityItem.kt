@@ -23,6 +23,9 @@ data class ActivityItem(
     val processStepsWhenIncorrect: List<ProcessStep>? = null,
     val finalResult: String,
     val finalOutput: String? = null,
+    /** Accepted text answers for [ActivityType.FILL_IN_BLANK] (trimmed, case-insensitive match). */
+    val fillInAcceptedAnswers: List<String> = emptyList(),
+    val fillInPlaceholder: String? = null,
     val xpReward: Int = 20,
     /** When true, correct answers still enter guided process steps before the final-result screen. */
     val requiresProcessRevealBeforeFinal: Boolean = false
@@ -39,6 +42,17 @@ fun ActivityItem.requiresMultipleChoice(): Boolean =
     type == ActivityType.MULTIPLE_CHOICE ||
         type == ActivityType.OUTPUT_TRACING ||
         type == ActivityType.DEBUG_CODE
+
+fun ActivityItem.isFillInBlank(): Boolean = type == ActivityType.FILL_IN_BLANK
+
+fun normalizeFillInAnswer(raw: String): String =
+    raw.trim().lowercase().replace(Regex("\\s+"), "")
+
+fun ActivityItem.fillInAnswerMatches(userInput: String): Boolean {
+    if (fillInAcceptedAnswers.isEmpty()) return false
+    val normalized = normalizeFillInAnswer(userInput)
+    return fillInAcceptedAnswers.any { normalizeFillInAnswer(it) == normalized }
+}
 
 /** Thinking in Code — Lesson 1 "What is a Program?" (MC-only custom flow). */
 fun ActivityItem.isTicLesson1MultipleChoice(): Boolean =

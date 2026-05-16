@@ -59,7 +59,7 @@ fun CodeQuestHomeScreen(
     val campusItems = courses.map { course ->
         val statusType = when {
             course.id in appState.completedCourseIds -> CampusStatus.COMPLETED
-            course.id in appState.unlockedCourseIds -> CampusStatus.ACTIVE
+            appState.isCourseUnlocked(course.id) -> CampusStatus.ACTIVE
             else -> CampusStatus.LOCKED
         }
         CampusCardUi(

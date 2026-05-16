@@ -50,7 +50,7 @@ fun CodeQuestQuestsScreen(
         val progress = if (total > 0) done.toFloat() / total.coerceAtLeast(1) else 0f
         val status = when {
             course.id in appState.completedCourseIds -> CourseProgressStatus.COMPLETED
-            course.id !in appState.unlockedCourseIds -> CourseProgressStatus.LOCKED
+            !appState.isCourseUnlocked(course.id) -> CourseProgressStatus.LOCKED
             course.id == appState.activeCourseId -> CourseProgressStatus.ACTIVE
             else -> CourseProgressStatus.AVAILABLE
         }

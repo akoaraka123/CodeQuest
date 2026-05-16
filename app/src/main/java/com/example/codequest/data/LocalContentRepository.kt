@@ -1,5 +1,6 @@
 package com.example.codequest.data
 
+import com.example.codequest.model.Achievement
 import com.example.codequest.model.ActivityItem
 import com.example.codequest.model.ActivityType
 import com.example.codequest.model.Badge
@@ -39,6 +40,41 @@ object LocalContentRepository {
         courseCsFundamentals(),
         courseNeuralNetworks()
     )
+
+    val achievements: List<Achievement> = listOf(
+        Achievement(
+            id = "first-steps",
+            title = "First Steps",
+            description = "Complete your first activity or lesson.",
+            icon = "👣"
+        ),
+        Achievement(
+            id = "perfect-start",
+            title = "Perfect Start",
+            description = "Get a perfect score in any lesson.",
+            icon = "⭐"
+        ),
+        Achievement(
+            id = "red-target-finder",
+            title = "Red Target Finder",
+            description = "Complete a red-target command-sequence challenge.",
+            icon = "🎯"
+        ),
+        Achievement(
+            id = "debug-learner",
+            title = "Debug Learner",
+            description = "Complete a debugging activity.",
+            icon = "🐛"
+        ),
+        Achievement(
+            id = "thinking-coder",
+            title = "Thinking Coder",
+            description = "Finish the Thinking in Code course.",
+            icon = "💡"
+        )
+    )
+
+    fun achievementById(id: String): Achievement? = achievements.firstOrNull { it.id == id }
 
     val badges: List<Badge> = listOf(
         Badge("first-steps", "First Steps", "Complete your first lesson.", "👣", 1),
@@ -85,7 +121,7 @@ object LocalContentRepository {
     private fun courseThinkingInCode(): Course = Course(
         id = "thinking-in-code",
         title = "Thinking in Code",
-        description = "Learn how to break problems into clear instructions.",
+        description = "Learn Python basics and robot sequencing challenges.",
         order = 0,
         icon = "🧠",
         lessons = listOf(
@@ -93,199 +129,194 @@ object LocalContentRepository {
                 id = "tic-l1",
                 courseId = "thinking-in-code",
                 title = "What is a Program?",
-                description = "Understand what a program is and how simple instructions can control a computer.",
-                content = "A computer program is a set of step-by-step instructions that a machine can follow. " +
-                    "Programs turn a goal into ordered actions—just like directions that must happen in sequence.",
+                description = "Read simple Python programs and predict what they print.",
+                content = "A Python program is a set of step-by-step instructions the computer runs in order. " +
+                    "Start with print() and simple variables to see how code produces output.",
                 order = 0,
-                example = "Question → answer → guided steps → recap before moving on.",
+                example = "print(\"Hello\") → runs top to bottom → shows Hello on the screen.",
                 activities = listOf(
                     ActivityItem(
                         id = "tic-l1-a1",
                         lessonId = "tic-l1",
-                        type = ActivityType.MULTIPLE_CHOICE,
-                        prompt = "Which statement best describes a computer program?",
-                        difficultyLabel = "Foundational skill",
-                        options = listOf(
-                            "A list of physical computer parts",
-                            "Step-by-step instructions a computer can follow",
-                            "A social media post about technology",
-                            "A cable that connects two screens"
-                        ),
-                        correctAnswerIndex = 1,
-                        correctFeedback = "Correct! A program is a set of instructions that tells a computer what to do.",
-                        incorrectFeedback = "Not quite. A program is not a physical part or a cable. Let's break it down.",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What does this Python program print?",
+                        difficultyLabel = "Python basics",
+                        codeSnippet = "print(\"Hello, Python!\")",
+                        options = listOf("Hello, Python!", "print", "Python", "Error"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! print() displays the text inside the quotes.",
+                        incorrectFeedback = "Not quite. Trace what print() sends to the screen.",
                         processSteps = listOf(
                             ProcessStep(
                                 stepNumber = 1,
-                                title = "Think about what computers need",
-                                explanation = "Computers do not decide actions by themselves. They need clear instructions."
+                                title = "Find the print statement",
+                                explanation = "print() is a Python instruction that shows output.",
+                                codeBlock = "print(\"Hello, Python!\")"
                             ),
                             ProcessStep(
                                 stepNumber = 2,
-                                title = "Understand what instructions do",
-                                explanation = "Instructions tell the computer what action to perform and in what order."
+                                title = "Read the string",
+                                explanation = "The text in quotes is the message to display.",
+                                highlightedCommand = "print",
+                                miniVisualHint = "→ text output"
                             ),
                             ProcessStep(
                                 stepNumber = 3,
-                                title = "Connect it to a program",
-                                explanation = "A program is a group of instructions written to solve a task."
+                                title = "See the result",
+                                explanation = "The program prints Hello, Python! on the screen.",
+                                miniVisualHint = "Hello, Python!"
                             )
                         ),
-                        finalResult = "A computer program is a set of step-by-step instructions that a computer can follow.",
-                        finalOutput = null,
-                        requiresProcessRevealBeforeFinal = false
+                        finalResult = "The output is Hello, Python!",
+                        finalOutput = "Hello, Python!"
                     ),
                     ActivityItem(
                         id = "tic-l1-a2",
                         lessonId = "tic-l1",
-                        type = ActivityType.MULTIPLE_CHOICE,
-                        prompt = "Which example is most like a simple program?",
-                        difficultyLabel = "Foundational skill",
-                        options = listOf(
-                            "A recipe that lists steps for cooking rice",
-                            "A random picture saved on a phone",
-                            "A broken keyboard",
-                            "A phone charger"
-                        ),
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What does this Python program print?",
+                        difficultyLabel = "Python basics",
+                        codeSnippet = "name = \"Alex\"\nprint(name)",
+                        options = listOf("Alex", "name", "\"Alex\"", "Error"),
                         correctAnswerIndex = 0,
-                        correctFeedback = "Correct! A recipe is similar to a program because it follows ordered steps.",
-                        incorrectFeedback = "Not quite. A simple program works like a set of ordered steps.",
+                        correctFeedback = "Correct! The variable name stores Alex, and print shows that value.",
+                        incorrectFeedback = "Not quite. Follow the variable, then the print line.",
                         processSteps = listOf(
                             ProcessStep(
                                 stepNumber = 1,
-                                title = "Look for ordered instructions",
-                                explanation = "A program has steps that must be followed in a clear order."
+                                title = "Store the value",
+                                explanation = "name is assigned the text Alex.",
+                                codeBlock = "name = \"Alex\""
                             ),
                             ProcessStep(
                                 stepNumber = 2,
-                                title = "Compare the choices",
-                                explanation = "A recipe gives instructions like wash rice, add water, cook, and serve."
+                                title = "Print the variable",
+                                explanation = "print(name) outputs whatever is stored in name.",
+                                highlightedCommand = "print",
+                                miniVisualHint = "→ Alex"
                             ),
                             ProcessStep(
                                 stepNumber = 3,
-                                title = "Match the idea",
-                                explanation = "That is similar to how a program tells a computer what to do step by step."
+                                title = "Confirm the output",
+                                explanation = "The screen shows Alex.",
+                                miniVisualHint = "Alex"
                             )
                         ),
-                        finalResult = "A recipe is most like a simple program because it follows ordered instructions.",
-                        finalOutput = null,
-                        requiresProcessRevealBeforeFinal = false
+                        finalResult = "The output is Alex.",
+                        finalOutput = "Alex"
                     ),
                     ActivityItem(
                         id = "tic-l1-a3",
                         lessonId = "tic-l1",
-                        type = ActivityType.MULTIPLE_CHOICE,
-                        prompt = "What does a program tell a computer to do?",
-                        difficultyLabel = "Foundational skill",
-                        options = listOf(
-                            "Ignore all commands",
-                            "Follow instructions to complete a task",
-                            "Turn into a human",
-                            "Stop using electricity"
-                        ),
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What does this Python program print?",
+                        difficultyLabel = "Python basics",
+                        codeSnippet = "a = 2\nb = 3\nprint(a + b)",
+                        options = listOf("23", "5", "a + b", "Error"),
                         correctAnswerIndex = 1,
-                        correctFeedback = "Correct! A program gives instructions so the computer can complete a task.",
-                        incorrectFeedback = "Not quite. A program gives the computer actions to follow.",
+                        correctFeedback = "Correct! Python adds the numbers 2 and 3.",
+                        incorrectFeedback = "Not quite. Add the values in a and b before printing.",
                         processSteps = listOf(
                             ProcessStep(
                                 stepNumber = 1,
-                                title = "Identify the purpose of a program",
-                                explanation = "A program exists to make the computer do something useful."
+                                title = "Read the variables",
+                                explanation = "a is 2 and b is 3.",
+                                codeBlock = "a = 2\nb = 3"
                             ),
                             ProcessStep(
                                 stepNumber = 2,
-                                title = "Understand the role of commands",
-                                explanation = "Commands are instructions that tell the computer what action to perform."
+                                title = "Evaluate the expression",
+                                explanation = "a + b means 2 + 3.",
+                                highlightedCommand = "+",
+                                miniVisualHint = "= 5"
                             ),
                             ProcessStep(
                                 stepNumber = 3,
-                                title = "Complete the idea",
-                                explanation = "When the instructions run together, they help complete a task."
+                                title = "Print the result",
+                                explanation = "print shows 5.",
+                                miniVisualHint = "5"
                             )
                         ),
-                        finalResult = "A program tells a computer to follow instructions to complete a task.",
-                        finalOutput = null,
-                        requiresProcessRevealBeforeFinal = false
+                        finalResult = "The output is 5.",
+                        finalOutput = "5"
                     ),
                     ActivityItem(
                         id = "tic-l1-a4",
                         lessonId = "tic-l1",
-                        type = ActivityType.MULTIPLE_CHOICE,
-                        prompt = "Why does the order of instructions matter in a program?",
-                        difficultyLabel = "Foundational skill",
+                        type = ActivityType.DEBUG_CODE,
+                        prompt = "This Python program should print Ready, but it crashes. What should be fixed?",
+                        difficultyLabel = "Python debug",
+                        codeSnippet = "pritn(\"Ready\")",
                         options = listOf(
-                            "Because computers follow instructions in sequence",
-                            "Because computers only read colors",
-                            "Because programs do not use logic",
-                            "Because order never matters"
+                            "Change pritn to print",
+                            "Delete the quotes",
+                            "Change Ready to ready only",
+                            "Add a second print line"
                         ),
                         correctAnswerIndex = 0,
-                        correctFeedback = "Correct! Computers usually follow instructions in the order they are written.",
-                        incorrectFeedback = "Not quite. The order matters because the computer follows steps one after another.",
+                        correctFeedback = "Correct! Python only recognizes print, not pritn.",
+                        incorrectFeedback = "Look for the misspelled function name.",
                         processSteps = listOf(
                             ProcessStep(
                                 stepNumber = 1,
-                                title = "Think about sequence",
-                                explanation = "A sequence means one step happens after another."
+                                title = "Read the error clue",
+                                explanation = "pritn is not a valid Python function name.",
+                                codeBlock = "pritn(\"Ready\")"
                             ),
                             ProcessStep(
                                 stepNumber = 2,
-                                title = "Apply it to programs",
-                                explanation = "If instructions are in the wrong order, the result may also be wrong."
+                                title = "Find the typo",
+                                explanation = "The correct built-in function is print.",
+                                highlightedCommand = "print",
+                                miniVisualHint = "spelling matters"
                             ),
                             ProcessStep(
                                 stepNumber = 3,
-                                title = "Simple example",
-                                explanation = "You cannot print a result before calculating it. The calculation must happen first."
+                                title = "Apply the fix",
+                                explanation = "Replace pritn with print so Ready is displayed.",
+                                miniVisualHint = "print(\"Ready\")"
                             )
                         ),
-                        finalResult = "The order matters because computers follow instructions in sequence.",
-                        finalOutput = null,
-                        requiresProcessRevealBeforeFinal = false
+                        finalResult = "Fix: use print(\"Ready\").",
+                        finalOutput = "Ready"
                     ),
                     ActivityItem(
                         id = "tic-l1-a5",
                         lessonId = "tic-l1",
-                        type = ActivityType.MULTIPLE_CHOICE,
-                        prompt = "Which set of instructions is most complete for making the robot find the red target?",
-                        difficultyLabel = "Foundational skill",
-                        options = listOf(
-                            "Turn right, move forward, turn right, move forward, select red",
-                            "Select red, move forward, turn right",
-                            "Turn left, select red, move backward",
-                            "Move forward only"
-                        ),
-                        correctAnswerIndex = 0,
-                        correctFeedback = "Correct! The steps are complete and ordered properly.",
-                        incorrectFeedback = "Not quite. The robot needs a complete and properly ordered sequence.",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What does this Python program print?",
+                        difficultyLabel = "Python basics",
+                        codeSnippet = "score = 10\nbonus = 5\nprint(score + bonus)",
+                        options = listOf("105", "15", "score + bonus", "Error"),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct! The program runs in order: store values, then print their sum.",
+                        incorrectFeedback = "Not quite. Instructions run top to bottom—add, then print.",
                         processSteps = listOf(
                             ProcessStep(
                                 stepNumber = 1,
-                                title = "Start with movement",
-                                explanation = "The robot must first move from its starting position."
+                                title = "Run assignments in order",
+                                explanation = "score becomes 10, then bonus becomes 5.",
+                                codeBlock = "score = 10\nbonus = 5"
                             ),
                             ProcessStep(
                                 stepNumber = 2,
-                                title = "Change direction",
-                                explanation = "The robot turns right to face the path toward the red target."
+                                title = "Process the sum",
+                                explanation = "score + bonus evaluates to 15.",
+                                highlightedCommand = "+",
+                                miniVisualHint = "10 + 5"
                             ),
                             ProcessStep(
                                 stepNumber = 3,
-                                title = "Move to the target",
-                                explanation = "The robot moves forward again to reach the red target."
-                            ),
-                            ProcessStep(
-                                stepNumber = 4,
-                                title = "Select the target",
-                                explanation = "The robot can only select red after reaching the red tile."
+                                title = "Produce output",
+                                explanation = "print displays 15.",
+                                miniVisualHint = "15"
                             )
                         ),
-                        finalResult = "A complete path turns toward the target, moves forward along that facing, then selects red only on the red tile.",
-                        finalOutput = null,
-                        requiresProcessRevealBeforeFinal = false
+                        finalResult = "The output is 15.",
+                        finalOutput = "15"
                     )
                 ),
-                pathCardSubtitle = "Understand what a program is and how instructions control a computer."
+                pathCardSubtitle = "Read and trace simple Python programs line by line."
             ),
             Lesson(
                 id = "tic-l2",
@@ -476,6 +507,246 @@ object LocalContentRepository {
                         ),
                         finalResult = "Red target found and selected.",
                         finalOutput = null
+                    ),
+                    ActivityItem(
+                        id = "tic-l2-gems-3",
+                        lessonId = "tic-l2",
+                        type = ActivityType.COMMAND_SEQUENCE,
+                        prompt = "Complete the program. Find the red target.",
+                        difficultyLabel = "Foundational skill",
+                        visualType = "GRID_COLOR_TARGET",
+                        availableCommands = listOf(
+                            "move forward",
+                            "turn right",
+                            "select red",
+                            "turn left"
+                        ),
+                        // 3×3: bottom-right (2,2), facing up — same antenna pose as Q1/Q2; red at top-left (0,0).
+                        correctSequence = listOf(
+                            "move forward",
+                            "move forward",
+                            "turn left",
+                            "move forward",
+                            "move forward",
+                            "select red"
+                        ),
+                        gridRows = 3,
+                        gridCols = 3,
+                        goldTileCount = 0,
+                        commandBoardSetup = CommandBoardSetup(
+                            robotRow = 2,
+                            robotCol = 2,
+                            facing = Direction.UP,
+                            targetTiles = listOf(GridPosition(0, 0))
+                        ),
+                        correctFeedback = "Correct! Let's see how your program runs.",
+                        incorrectFeedback = "Not quite. Let's walk through the logic.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Climb the right edge",
+                                explanation = "From the bottom-right corner facing up, move forward along the right column.",
+                                highlightedCommand = "move forward",
+                                miniVisualHint = "◇ forward follows facing"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Face along the top row",
+                                explanation = "After reaching the top-right tile, turn left so forward points toward the top-left.",
+                                highlightedCommand = "turn left",
+                                miniVisualHint = "↻ → face left"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Slide to the red tile",
+                                explanation = "Move forward along the top row until you stand on the red target.",
+                                highlightedCommand = "move forward",
+                                miniVisualHint = "◇ → onto red"
+                            ),
+                            ProcessStep(
+                                stepNumber = 4,
+                                title = "Select on the target only",
+                                explanation = "select red succeeds only when the robot is on the red tile.",
+                                highlightedCommand = "select red",
+                                miniVisualHint = "✓ finish"
+                            )
+                        ),
+                        processStepsWhenIncorrect = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Replay your sequence mentally",
+                                explanation = "Walk through each command in order. Turn before you move when you need a new direction.",
+                                miniVisualHint = "⚠ facing matters"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Check target selection",
+                                explanation = "select red only succeeds on the red tile.",
+                                highlightedCommand = "select red"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Replay step by step",
+                                explanation = "Stay in bounds and end on the red tile before selecting.",
+                                miniVisualHint = "Tip: tap a slot to clear it"
+                            )
+                        ),
+                        finalResult = "Red target found and selected.",
+                        finalOutput = null
+                    ),
+                    ActivityItem(
+                        id = "tic-l2-gems-4",
+                        lessonId = "tic-l2",
+                        type = ActivityType.COMMAND_SEQUENCE,
+                        prompt = "Complete the program. Find the red target.",
+                        difficultyLabel = "Foundational skill",
+                        visualType = "GRID_COLOR_TARGET",
+                        availableCommands = listOf(
+                            "move forward",
+                            "turn right",
+                            "select red",
+                            "turn left"
+                        ),
+                        // 4×4: bottom-right (3,3), facing up — same as Q2; red at top-right (0,3).
+                        correctSequence = listOf(
+                            "move forward",
+                            "move forward",
+                            "move forward",
+                            "select red"
+                        ),
+                        gridRows = 4,
+                        gridCols = 4,
+                        goldTileCount = 0,
+                        commandBoardSetup = CommandBoardSetup(
+                            robotRow = 3,
+                            robotCol = 3,
+                            facing = Direction.UP,
+                            targetTiles = listOf(GridPosition(0, 3))
+                        ),
+                        correctFeedback = "Correct! Let's see how your program runs.",
+                        incorrectFeedback = "Not quite. Let's walk through the logic.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Climb the right edge",
+                                explanation = "While facing up from the bottom-right corner, move forward along the right column toward the top.",
+                                highlightedCommand = "move forward",
+                                miniVisualHint = "◇ forward follows facing"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Step onto the red tile",
+                                explanation = "Keep moving forward until you reach the red target in the top-right corner.",
+                                highlightedCommand = "move forward",
+                                miniVisualHint = "◇ → onto red"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Select on the target only",
+                                explanation = "select red succeeds only when the robot is on the red tile.",
+                                highlightedCommand = "select red",
+                                miniVisualHint = "✓ finish"
+                            )
+                        ),
+                        processStepsWhenIncorrect = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Trace facing and forward",
+                                explanation = "Forward moves one tile in the direction the robot faces—turn first when changing lanes.",
+                                miniVisualHint = "⚠ facing matters"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Check select red",
+                                explanation = "You must be on the red tile before select red will work.",
+                                highlightedCommand = "select red"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Compare to the board",
+                                explanation = "Adjust the earliest step where position or facing no longer matches the goal.",
+                                miniVisualHint = "Tip: tap a slot to clear it"
+                            )
+                        ),
+                        finalResult = "Red target found and selected.",
+                        finalOutput = null
+                    ),
+                    ActivityItem(
+                        id = "tic-l2-gems-5",
+                        lessonId = "tic-l2",
+                        type = ActivityType.COMMAND_SEQUENCE,
+                        prompt = "Complete the program. Find the red target.",
+                        difficultyLabel = "Foundational skill",
+                        visualType = "GRID_COLOR_TARGET",
+                        availableCommands = listOf(
+                            "move forward",
+                            "turn right",
+                            "select red",
+                            "turn left"
+                        ),
+                        // 3×3: bottom-left (2,0), facing up; red at bottom-right (2,2).
+                        correctSequence = listOf(
+                            "turn right",
+                            "move forward",
+                            "move forward",
+                            "select red"
+                        ),
+                        gridRows = 3,
+                        gridCols = 3,
+                        goldTileCount = 0,
+                        commandBoardSetup = CommandBoardSetup(
+                            robotRow = 2,
+                            robotCol = 0,
+                            facing = Direction.UP,
+                            targetTiles = listOf(GridPosition(2, 2))
+                        ),
+                        correctFeedback = "Correct! Let's see how your program runs.",
+                        incorrectFeedback = "Not quite. Let's walk through the logic.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Face along the bottom row",
+                                explanation = "From facing up, turn right so forward points right along the bottom row.",
+                                highlightedCommand = "turn right",
+                                miniVisualHint = "↻ → face right"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Move across the bottom",
+                                explanation = "Move forward twice along the bottom row toward the red tile.",
+                                highlightedCommand = "move forward",
+                                miniVisualHint = "◇ → ◇ along bottom"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Select on the target",
+                                explanation = "You should be standing on the red tile at the bottom-right before selecting.",
+                                highlightedCommand = "select red",
+                                miniVisualHint = "✓ finish"
+                            )
+                        ),
+                        processStepsWhenIncorrect = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Replay your sequence mentally",
+                                explanation = "Walk through each command in order. Turn first so forward follows the bottom row.",
+                                miniVisualHint = "⚠ facing matters"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Check target selection",
+                                explanation = "select red only succeeds on the red tile.",
+                                highlightedCommand = "select red"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Replay step by step",
+                                explanation = "Stay in bounds and end on the red tile before selecting.",
+                                miniVisualHint = "Tip: tap a slot to clear it"
+                            )
+                        ),
+                        finalResult = "Red target found and selected.",
+                        finalOutput = null
                     )
                 )
             ),
@@ -483,45 +754,196 @@ object LocalContentRepository {
                 id = "tic-l3",
                 courseId = "thinking-in-code",
                 title = "Input, Process, Output",
-                description = "Most programs follow: receive data, work on it, show a result.",
-                content = "Most programs follow a simple pattern. They receive input, process it, then produce output.",
+                description = "Trace Python programs step by step: input → process → output.",
+                content = "Every useful Python program follows Input → Process → Output (IPO). " +
+                    "Input stores data, process transforms it, and output shows the result with print().",
                 order = 2,
-                example = "A login form: input (typed password), process (compare hash), output (success or error message).",
+                example = "Input: price = 10  →  Process: total = price + 2  →  Output: print(total) → 12",
                 activities = listOf(
                     ActivityItem(
                         id = "tic-l3-a1",
                         lessonId = "tic-l3",
                         type = ActivityType.OUTPUT_TRACING,
-                        prompt = "What is the output?",
-                        difficultyLabel = "Trace the program",
-                        codeSnippet = "x = 5\ny = 2\nprint(x + y)",
-                        options = listOf("52", "7", "x + y", "Error"),
+                        prompt = "Trace the IPO steps in this Python program. What does it print?",
+                        difficultyLabel = "Python · IPO",
+                        codeSnippet = "# Input\nminutes = 30\nrate = 2\n# Process\ncost = minutes * rate\n# Output\nprint(cost)",
+                        options = listOf("32", "60", "cost", "Error"),
                         correctAnswerIndex = 1,
-                        correctFeedback = "Correct! The program adds the two numeric values.",
-                        incorrectFeedback = "Not quite. Let's walk through the process.",
+                        correctFeedback = "Correct! Input values are multiplied (process), then print shows the output.",
+                        incorrectFeedback = "Follow IPO: read inputs, compute cost, then print.",
                         processSteps = listOf(
                             ProcessStep(
                                 stepNumber = 1,
-                                title = "Read the variables",
-                                explanation = "x stores the value 5 and y stores the value 2.",
-                                codeBlock = "x = 5\ny = 2"
+                                title = "Input",
+                                explanation = "minutes and rate store the incoming values (30 and 2).",
+                                codeBlock = "minutes = 30\nrate = 2",
+                                miniVisualHint = "← data in"
                             ),
                             ProcessStep(
                                 stepNumber = 2,
-                                title = "Understand the operation",
-                                explanation = "The plus sign adds the values stored in x and y.",
-                                highlightedCommand = "+",
-                                miniVisualHint = "arithmetic add"
+                                title = "Process",
+                                explanation = "cost = minutes * rate calculates 30 × 2 = 60.",
+                                highlightedCommand = "*",
+                                miniVisualHint = "30 * 2 = 60"
                             ),
                             ProcessStep(
                                 stepNumber = 3,
-                                title = "Calculate the result",
-                                explanation = "5 + 2 equals 7.",
-                                miniVisualHint = "= 7"
+                                title = "Output",
+                                explanation = "print(cost) displays the processed result on the screen.",
+                                highlightedCommand = "print",
+                                miniVisualHint = "→ 60"
                             )
                         ),
-                        finalResult = "The correct answer is 7.",
-                        finalOutput = "7"
+                        finalResult = "IPO: inputs 30 and 2 → process multiply → output 60.",
+                        finalOutput = "60"
+                    ),
+                    ActivityItem(
+                        id = "tic-l3-a2",
+                        lessonId = "tic-l3",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "Trace the IPO steps in this Python program. What does it print?",
+                        difficultyLabel = "Python · IPO",
+                        codeSnippet = "# Input\nitem = \"Apple\"\n# Process\nlabel = \"Item: \" + item\n# Output\nprint(label)",
+                        options = listOf("Apple", "Item: Apple", "Item:", "Error"),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct! Text input is combined (process), then printed (output).",
+                        incorrectFeedback = "Input stores Apple, process builds a label, output prints it.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Input",
+                                explanation = "item stores the text Apple — this is the input data.",
+                                codeBlock = "item = \"Apple\"",
+                                miniVisualHint = "← text in"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Process",
+                                explanation = "Joining strings builds label = \"Item: Apple\".",
+                                highlightedCommand = "+",
+                                miniVisualHint = "Item: + Apple"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Output",
+                                explanation = "print(label) shows the processed message.",
+                                highlightedCommand = "print",
+                                miniVisualHint = "→ Item: Apple"
+                            )
+                        ),
+                        finalResult = "IPO: input Apple → process join text → output Item: Apple.",
+                        finalOutput = "Item: Apple"
+                    ),
+                    ActivityItem(
+                        id = "tic-l3-a3",
+                        lessonId = "tic-l3",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "Trace the IPO steps in this Python program. What does it print?",
+                        difficultyLabel = "Python · IPO",
+                        codeSnippet = "# Input\nusername = \"coder\"\n# Process\nmessage = \"Welcome, \" + username\n# Output\nprint(message)",
+                        options = listOf("coder", "Welcome, coder", "Welcome,", "Error"),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct! Login-style input becomes a welcome message, then prints.",
+                        incorrectFeedback = "Track input (username), process (build message), output (print).",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Input",
+                                explanation = "username stores who signed in — the input for this program.",
+                                codeBlock = "username = \"coder\"",
+                                miniVisualHint = "← user in"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Process",
+                                explanation = "The program builds message by combining welcome text + username.",
+                                highlightedCommand = "+",
+                                miniVisualHint = "Welcome, + coder"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Output",
+                                explanation = "print(message) is the output step the user sees.",
+                                highlightedCommand = "print",
+                                miniVisualHint = "→ Welcome, coder"
+                            )
+                        ),
+                        finalResult = "IPO: input username → process greeting → output Welcome, coder.",
+                        finalOutput = "Welcome, coder"
+                    ),
+                    ActivityItem(
+                        id = "tic-l3-a4",
+                        lessonId = "tic-l3",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "Trace the IPO steps in this Python program. What does it print?",
+                        difficultyLabel = "Python · IPO",
+                        codeSnippet = "# Input\ncoins = 8\nbonus = 2\n# Process\ntotal = coins + bonus\n# Output\nprint(total)",
+                        options = listOf("82", "10", "coins + bonus", "Error"),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct! Two inputs are added in process, then printed as output.",
+                        incorrectFeedback = "Add coins and bonus (process) before print (output).",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Input",
+                                explanation = "coins and bonus hold the values collected (8 and 2).",
+                                codeBlock = "coins = 8\nbonus = 2",
+                                miniVisualHint = "← numbers in"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Process",
+                                explanation = "total = coins + bonus adds the inputs: 8 + 2 = 10.",
+                                highlightedCommand = "+",
+                                miniVisualHint = "8 + 2 = 10"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Output",
+                                explanation = "print(total) shows the final processed value.",
+                                highlightedCommand = "print",
+                                miniVisualHint = "→ 10"
+                            )
+                        ),
+                        finalResult = "IPO: inputs 8 and 2 → process add → output 10.",
+                        finalOutput = "10"
+                    ),
+                    ActivityItem(
+                        id = "tic-l3-a5",
+                        lessonId = "tic-l3",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "Trace the IPO steps in this Python program. What does it print?",
+                        difficultyLabel = "Python · IPO",
+                        codeSnippet = "# Input\nprice = 10\ntax = 2\n# Process\ntotal = price + tax\n# Output\nprint(total)",
+                        options = listOf("102", "12", "8", "price + tax"),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct! A receipt-style IPO: price and tax in, sum processed, total printed.",
+                        incorrectFeedback = "Read price/tax (input), add (process), print total (output).",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Input",
+                                explanation = "price and tax are the input values (like on a receipt).",
+                                codeBlock = "price = 10\ntax = 2",
+                                miniVisualHint = "← receipt in"
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Process",
+                                explanation = "total = price + tax computes the amount to pay: 12.",
+                                highlightedCommand = "+",
+                                miniVisualHint = "10 + 2 = 12"
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Output",
+                                explanation = "print(total) displays the final result to the user.",
+                                highlightedCommand = "print",
+                                miniVisualHint = "→ 12"
+                            )
+                        ),
+                        finalResult = "IPO: inputs price & tax → process sum → output 12.",
+                        finalOutput = "12"
                     )
                 )
             ),
@@ -529,27 +951,26 @@ object LocalContentRepository {
                 id = "tic-l4",
                 courseId = "thinking-in-code",
                 title = "Debugging Simple Logic",
-                description = "Find mismatches between what you meant and what you wrote.",
-                content = "Debugging starts by comparing expected behavior to actual behavior.",
+                description = "Type the fix — fill in the blank to debug Python programs.",
+                content = "Debugging Python means finding the line or symbol that is wrong and typing the correction.",
                 order = 3,
-                example = "If login always fails, check whether you compare the right fields and types.",
+                example = "if score ___ 60: → type >= so a score of 60 prints PASS.",
                 activities = listOf(
                     ActivityItem(
                         id = "tic-l4-a1",
                         lessonId = "tic-l4",
-                        type = ActivityType.DEBUG_CODE,
-                        prompt = "The program should print PASS for score = 60. What should be fixed?",
-                        difficultyLabel = "Debug reasoning",
-                        codeSnippet = "score = 60\nif score > 60:\n    print(\"PASS\")\nelse:\n    print(\"REVIEW\")",
-                        options = listOf(
-                            "Change score > 60 to score >= 60",
-                            "Change print(\"PASS\") to print(\"REVIEW\")",
-                            "Delete the else block",
-                            "Set score = 0"
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "This program should print PASS when score is 60. Fill in the correct comparison on line 2.",
+                        difficultyLabel = "Python debug · fill in",
+                        codeSnippet = "score = 60\nif score ___ 60:\n    print(\"PASS\")\nelse:\n    print(\"REVIEW\")",
+                        fillInPlaceholder = "Type the comparison (e.g. >=)",
+                        fillInAcceptedAnswers = listOf(
+                            ">=",
+                            "score >= 60",
+                            "if score >= 60"
                         ),
-                        correctAnswerIndex = 0,
-                        correctFeedback = "Nice catch. The boundary value 60 must be included.",
-                        incorrectFeedback = "Check the boundary condition again.",
+                        correctFeedback = "Nice catch. The boundary value 60 must be included with >=.",
+                        incorrectFeedback = "Check the comparison on line 2 — 60 should pass.",
                         processSteps = listOf(
                             ProcessStep(
                                 stepNumber = 1,
@@ -565,11 +986,125 @@ object LocalContentRepository {
                             ProcessStep(
                                 stepNumber = 3,
                                 title = "Apply the minimal fix",
-                                explanation = "Use >= 60 so the logic matches the requirement."
+                                explanation = "Type >= so the condition matches the requirement."
                             )
                         ),
                         finalResult = "Boundary bug fixed: score >= 60.",
                         finalOutput = null
+                    ),
+                    ActivityItem(
+                        id = "tic-l4-a2",
+                        lessonId = "tic-l4",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "This program should print 20. Fill in the correct update on line 2.",
+                        difficultyLabel = "Python debug · fill in",
+                        codeSnippet = "total = 10\ntotal = total + ___\nprint(total)",
+                        fillInPlaceholder = "Type what to add (e.g. 10)",
+                        fillInAcceptedAnswers = listOf(
+                            "10",
+                            "total + 10",
+                            "total=total+10"
+                        ),
+                        correctFeedback = "Correct! 10 + 10 = 20 after the second assignment.",
+                        incorrectFeedback = "Trace how total changes — you need 20 after the update.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Trace assignments", explanation = "total starts at 10, then becomes 15 if you add 5."),
+                            ProcessStep(stepNumber = 2, title = "Check the goal", explanation = "The program should end with total equal to 20."),
+                            ProcessStep(stepNumber = 3, title = "Adjust the math", explanation = "Fill in 10 so the second line adds ten more.")
+                        ),
+                        finalResult = "Use total = total + 10 to print 20.",
+                        finalOutput = "20"
+                    ),
+                    ActivityItem(
+                        id = "tic-l4-a3",
+                        lessonId = "tic-l4",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Line 2 should match line 1 so Hi prints twice. Fill in the corrected second print.",
+                        difficultyLabel = "Python debug · fill in",
+                        codeSnippet = "print(\"Hi\")\nprint(___)",
+                        fillInPlaceholder = "Type the fixed print(...) line",
+                        fillInAcceptedAnswers = listOf(
+                            "print(\"Hi\")",
+                            "print('Hi')"
+                        ),
+                        correctFeedback = "Correct! Matching quotes on line 2 lets the program run both prints.",
+                        incorrectFeedback = "Compare the quote marks — line 2 must match line 1.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Inspect line 2", explanation = "print('Hi\") mixes quote styles and breaks the program."),
+                            ProcessStep(stepNumber = 2, title = "Match quotes", explanation = "Strings must open and close with the same kind of quote."),
+                            ProcessStep(stepNumber = 3, title = "Fix and rerun", explanation = "Type print(\"Hi\") for the second line.")
+                        ),
+                        finalResult = "Fix the second line: print(\"Hi\").",
+                        finalOutput = "Hi\nHi"
+                    ),
+                    ActivityItem(
+                        id = "tic-l4-a4",
+                        lessonId = "tic-l4",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "This program should print even when n is 4. Fill in the correct operator on line 2.",
+                        difficultyLabel = "Python debug · fill in",
+                        codeSnippet = "n = 4\nif n % 2 ___ 0:\n    print(\"even\")\nelse:\n    print(\"odd\")",
+                        fillInPlaceholder = "Type the comparison operator",
+                        fillInAcceptedAnswers = listOf(
+                            "==",
+                            "n % 2 == 0",
+                            "if n % 2 == 0"
+                        ),
+                        correctFeedback = "Correct! Use == to compare values, not = (which assigns).",
+                        incorrectFeedback = "Line 2 needs a comparison operator, not assignment.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Read the goal",
+                                explanation = "The program checks whether n is divisible by 2."
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Spot the bug",
+                                explanation = "A single = assigns a value; == tests equality."
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Type the fix",
+                                explanation = "Fill in == so the condition works when n is 4."
+                            )
+                        ),
+                        finalResult = "Use == to compare: if n % 2 == 0:",
+                        finalOutput = "even"
+                    ),
+                    ActivityItem(
+                        id = "tic-l4-a5",
+                        lessonId = "tic-l4",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "This program should print Ada. Fill in the correct variable name on line 2.",
+                        difficultyLabel = "Python debug · fill in",
+                        codeSnippet = "name = \"Ada\"\nprint(___)",
+                        fillInPlaceholder = "Type what goes inside print(...)",
+                        fillInAcceptedAnswers = listOf(
+                            "name",
+                            "print(name)"
+                        ),
+                        correctFeedback = "Correct! The variable is name — spelling must match exactly.",
+                        incorrectFeedback = "Check the variable declared on line 1 — print must use the same name.",
+                        processSteps = listOf(
+                            ProcessStep(
+                                stepNumber = 1,
+                                title = "Find the variable",
+                                explanation = "Line 1 stores the text Ada in name."
+                            ),
+                            ProcessStep(
+                                stepNumber = 2,
+                                title = "Match the identifier",
+                                explanation = "print must use the exact same variable name."
+                            ),
+                            ProcessStep(
+                                stepNumber = 3,
+                                title = "Fill in the fix",
+                                explanation = "Type name inside print so Ada is displayed."
+                            )
+                        ),
+                        finalResult = "Use print(name) to show Ada.",
+                        finalOutput = "Ada"
                     )
                 )
             )

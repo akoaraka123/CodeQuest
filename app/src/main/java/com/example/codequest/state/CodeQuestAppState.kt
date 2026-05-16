@@ -8,6 +8,7 @@ import com.example.codequest.data.LocalContentRepository
 import com.example.codequest.model.ActivityCompletionRecord
 import com.example.codequest.model.ActivityItem
 import com.example.codequest.model.ActivityType
+import com.example.codequest.model.fillInAnswerMatches
 import com.example.codequest.model.isTicLesson1MultipleChoice
 import com.example.codequest.model.requiresMultipleChoice
 import com.example.codequest.model.CommandSequencePlayback
@@ -16,8 +17,10 @@ import com.example.codequest.model.playbackBoardConfig
 import com.example.codequest.model.effectiveProcessSteps
 import com.example.codequest.model.normalizeCommandToken
 import com.example.codequest.model.slotCount
+import com.example.codequest.model.Achievement
 import com.example.codequest.model.AppUser
 import com.example.codequest.model.Badge
+import com.example.codequest.model.isRedTargetCommandSequence
 import com.example.codequest.model.Course
 import com.example.codequest.model.Lesson
 import com.example.codequest.ui.components.AppTab
@@ -87,6 +90,13 @@ class CodeQuestAppState {
     var lessonInteractionState by mutableStateOf(LessonInteractionState.ACTIVITY)
         private set
 
+    /** Step index for [LessonInteractionState.ROBOT_DEMO_GUIDE] (Lesson 2 robot intro). */
+    var robotDemoGuideStep by mutableIntStateOf(0)
+        private set
+
+    var ticL2RobotGuideSeen by mutableStateOf(false)
+        private set
+
     var currentProcessStepIndex by mutableIntStateOf(0)
         private set
 
@@ -95,6 +105,10 @@ class CodeQuestAppState {
 
     /** MC / trace: selected option index. Command tasks: unused for selection. */
     var pendingSubmittedIndex by mutableIntStateOf(-1)
+        private set
+
+    /** Fill-in-the-blank activities: learner's typed answer. */
+    var fillInAnswer by mutableStateOf("")
         private set
 
     var isAnswerChecked by mutableStateOf(false)
@@ -260,7 +274,42 @@ class CodeQuestAppState {
     var unlockedLessonIds by mutableStateOf(setOf("tic-l1"))
         private set
 
+    /**
+     * Unlocks every course and lesson and allows retaking completed content for QA / content editing.
+     * Toggle from Profile → Demo mode.
+     */
+    var demoModeEnabled by mutableStateOf(false)
+        private set
+
+    private val allLessonIds: Set<String> by lazy {
+        courseOrder.flatMap { course -> course.lessons.map { it.id } }.toSet()
+    }
+
+    private val allCourseIds: Set<String> by lazy {
+        courseOrder.map { it.id }.toSet()
+    }
+
+    fun isCourseUnlocked(courseId: String): Boolean =
+        demoModeEnabled || courseId in unlockedCourseIds
+
+    fun isLessonUnlocked(lessonId: String): Boolean =
+        demoModeEnabled || lessonId in unlockedLessonIds
+
+    fun effectiveUnlockedLessonIds(): Set<String> =
+        if (demoModeEnabled) allLessonIds else unlockedLessonIds
+
+    fun applyDemoMode(enabled: Boolean) {
+        demoModeEnabled = enabled
+        lessonEntryBlockedNotice = null
+    }
+
     var earnedBadgeIds by mutableStateOf(emptySet<String>())
+        private set
+
+    var earnedAchievementIds by mutableStateOf(emptySet<String>())
+        private set
+
+    var pendingUnlockedAchievements by mutableStateOf(listOf<Achievement>())
         private set
 
     var badgeProgress by mutableStateOf(
@@ -334,17 +383,18 @@ class CodeQuestAppState {
     }
 
     fun selectCourseDetailLesson(lessonId: String) {
-        if (lessonId in unlockedLessonIds) {
+        if (isLessonUnlocked(lessonId)) {
             courseDetailFocusLessonId = lessonId
         }
     }
 
     private fun pickDefaultFocusLesson(course: Course): String? {
         val sorted = course.lessons.sortedBy { it.order }
+        if (demoModeEnabled) return sorted.firstOrNull()?.id
         val next = sorted.firstOrNull {
-            it.id in unlockedLessonIds && it.id !in completedLessonIds
+            isLessonUnlocked(it.id) && it.id !in completedLessonIds
         }
-        return next?.id ?: sorted.firstOrNull { it.id in unlockedLessonIds }?.id
+        return next?.id ?: sorted.firstOrNull { isLessonUnlocked(it.id) }?.id
     }
 
     fun lessonLevelDisplay(lessonId: String, courseId: String): Int {
@@ -357,7 +407,7 @@ class CodeQuestAppState {
         val course = getCourse(activeCourseId) ?: return null
         val sorted = course.lessons.sortedBy { it.order }
         return sorted.firstOrNull { lid ->
-            lid.id !in completedLessonIds && lid.id in unlockedLessonIds
+            lid.id !in completedLessonIds && isLessonUnlocked(lid.id)
         }
     }
 
@@ -370,7 +420,7 @@ class CodeQuestAppState {
     }
 
     fun openCourseDetail(courseId: String): Boolean {
-        if (courseId !in unlockedCourseIds) return false
+        if (!isCourseUnlocked(courseId)) return false
         if (currentScreen == AppScreen.MAIN_TABS) {
             previousTabBeforeFlow = selectedTab
         }
@@ -390,16 +440,66 @@ class CodeQuestAppState {
         currentScreen = AppScreen.MAIN_TABS
     }
 
-    fun startLessonFromCourseDetail(): Boolean {
+    private fun shouldShowTicL2RobotGuide(lessonId: String, startAtActivityIndex: Int?): Boolean {
+        if (lessonId != "tic-l2" || ticL2RobotGuideSeen || lessonReviewMode) return false
+        val startIdx = startAtActivityIndex ?: 0
+        return startIdx == 0
+    }
+
+    private fun applyRobotDemoGuideIfNeeded(lessonId: String, startAtActivityIndex: Int?) {
+        if (shouldShowTicL2RobotGuide(lessonId, startAtActivityIndex)) {
+            robotDemoGuideStep = 0
+            lessonInteractionState = LessonInteractionState.ROBOT_DEMO_GUIDE
+        } else {
+            lessonInteractionState = LessonInteractionState.ACTIVITY
+        }
+    }
+
+    fun advanceRobotDemoGuide() {
+        if (lessonInteractionState != LessonInteractionState.ROBOT_DEMO_GUIDE) return
+        if (robotDemoGuideStep < robotDemoGuideStepCount() - 1) {
+            robotDemoGuideStep += 1
+        } else {
+            completeRobotDemoGuide()
+        }
+    }
+
+    fun completeRobotDemoGuide() {
+        ticL2RobotGuideSeen = true
+        robotDemoGuideStep = 0
+        lessonInteractionState = LessonInteractionState.ACTIVITY
+        initCommandSlots()
+    }
+
+    fun robotDemoGuideStepCount(): Int = 6
+
+    fun startLessonFromCourseDetail(startAtActivityIndex: Int? = null): Boolean {
         val courseId = selectedCourseId ?: return false
         val lessonId = courseDetailFocusLessonId ?: pickDefaultFocusLesson(getCourse(courseId) ?: return false) ?: return false
-        if (lessonId !in unlockedLessonIds) return false
+        if (!isLessonUnlocked(lessonId)) return false
         val lesson = LocalContentRepository.lessonById(lessonId) ?: return false
         if (lesson.courseId != courseId) return false
         lessonEntryBlockedNotice = null
         lessonReviewMode = false
         if (lesson.activities.isEmpty()) {
             completeTextOnlyLessonFromCourse(courseId, lessonId)
+            return true
+        }
+        if (demoModeEnabled) {
+            completedActivityIds = completedActivityIds - lesson.activities.map { it.id }.toSet()
+            completedLessonIds = completedLessonIds - lessonId
+            activeCourseId = courseId
+            selectedLessonId = lessonId
+            currentActivityIndex = startAtActivityIndex
+                ?.coerceIn(0, lesson.activities.lastIndex)
+                ?: 0
+            sessionXpEarned = 0
+            lessonCorrectThisSession = 0
+            lessonOneWrongAttempts = 0
+            resetInteractionForActivity()
+            initCommandSlots()
+            applyRobotDemoGuideIfNeeded(lesson.id, startAtActivityIndex)
+            currentScreen = AppScreen.LESSON_ACTIVITY
             return true
         }
         if (lesson.id in completedLessonIds) {
@@ -413,12 +513,15 @@ class CodeQuestAppState {
         }
         activeCourseId = courseId
         selectedLessonId = lessonId
-        currentActivityIndex = resumeIdx
+        currentActivityIndex = startAtActivityIndex
+            ?.coerceIn(0, lesson.activities.lastIndex)
+            ?: resumeIdx
         sessionXpEarned = 0
         lessonCorrectThisSession = 0
         lessonOneWrongAttempts = 0
         resetInteractionForActivity()
         initCommandSlots()
+        applyRobotDemoGuideIfNeeded(lesson.id, startAtActivityIndex)
         currentScreen = AppScreen.LESSON_ACTIVITY
         return true
     }
@@ -492,11 +595,18 @@ class CodeQuestAppState {
         pendingSubmittedIndex = answerIndex
     }
 
+    fun updateFillInAnswer(value: String) {
+        if (lessonReviewMode) return
+        fillInAnswer = value
+    }
+
     fun activityReadyForCheck(): Boolean {
         val a = getCurrentActivity() ?: return false
         return when (a.type) {
             ActivityType.COMMAND_SEQUENCE ->
                 activityCommandSlots.isNotEmpty() && activityCommandSlots.all { it != null }
+            ActivityType.FILL_IN_BLANK ->
+                fillInAnswer.isNotBlank()
             else -> pendingSubmittedIndex >= 0 && a.correctAnswerIndex >= 0
         }
     }
@@ -506,6 +616,7 @@ class CodeQuestAppState {
         currentProcessStepIndex = 0
         pendingAnswerCorrect = false
         pendingSubmittedIndex = -1
+        fillInAnswer = ""
         isAnswerChecked = false
         commandPlaybackCommandsSnapshot = emptyList()
         commandPlaybackUsesReferenceSolution = false
@@ -536,6 +647,8 @@ class CodeQuestAppState {
                     a.playbackBoardConfig(),
                     activityCommandSlots
                 )
+            ActivityType.FILL_IN_BLANK ->
+                a.fillInAnswerMatches(fillInAnswer)
             ActivityType.MULTIPLE_CHOICE,
             ActivityType.OUTPUT_TRACING,
             ActivityType.DEBUG_CODE ->
@@ -610,6 +723,7 @@ class CodeQuestAppState {
         if (lessonReviewMode) return
         lessonInteractionState = LessonInteractionState.ACTIVITY
         pendingSubmittedIndex = -1
+        fillInAnswer = ""
         pendingAnswerCorrect = false
         isAnswerChecked = false
     }
@@ -648,6 +762,7 @@ class CodeQuestAppState {
             correct = true,
             xpGranted = a.xpReward,
             selectedMcIndex = if (a.requiresMultipleChoice()) pendingSubmittedIndex.takeIf { it >= 0 } else null,
+            fillInAnswer = if (a.type == ActivityType.FILL_IN_BLANK) fillInAnswer.takeIf { it.isNotBlank() } else null,
             commandTokens = if (a.type == ActivityType.COMMAND_SEQUENCE) {
                 activityCommandSlots.mapNotNull { it }
             } else {
@@ -660,7 +775,7 @@ class CodeQuestAppState {
     private fun grantPendingCorrectActivityXpIfApplicable() {
         val a = getCurrentActivity() ?: return
         if (!pendingAnswerCorrect) return
-        if (a.id in completedActivityIds) return
+        if (a.id in completedActivityIds && !demoModeEnabled) return
 
         val record = buildCompletionRecord(a)
         activityCompletionRecords = activityCompletionRecords + (a.id to record)
@@ -674,6 +789,7 @@ class CodeQuestAppState {
         if (a.type == ActivityType.DEBUG_CODE) {
             debugCorrectCount += 1
         }
+        checkAchievementsAfterActivity(a)
     }
 
     private fun moveToNextLessonActivityOrCompleteBonus() {
@@ -765,6 +881,12 @@ class CodeQuestAppState {
                 isAnswerChecked = true
                 lessonInteractionState = LessonInteractionState.PROCESS_REVEAL
             }
+            ActivityType.FILL_IN_BLANK -> {
+                fillInAnswer = record.fillInAnswer.orEmpty()
+                pendingAnswerCorrect = record.correct
+                isAnswerChecked = true
+                lessonInteractionState = LessonInteractionState.FEEDBACK
+            }
             ActivityType.MULTIPLE_CHOICE,
             ActivityType.OUTPUT_TRACING,
             ActivityType.DEBUG_CODE -> {
@@ -795,6 +917,11 @@ class CodeQuestAppState {
         }
         activeCourseId = course.id
         updateBadges()
+        checkAchievementsAfterLesson(
+            course = course,
+            questionsCorrect = questionsCorrect,
+            totalActivities = totalActivities
+        )
         result = LessonSessionResult(
             courseId = course.id,
             lessonId = lesson.id,
@@ -818,7 +945,7 @@ class CodeQuestAppState {
         selectedCourseId = course.id
         val next = LocalContentRepository.nextLessonInCourse(course.id, r.lessonId)
         courseDetailFocusLessonId = when {
-            next != null && next.id in unlockedLessonIds -> next.id
+            next != null && isLessonUnlocked(next.id) -> next.id
             else -> pickDefaultFocusLesson(course)
         }
         result = null
@@ -891,7 +1018,7 @@ class CodeQuestAppState {
         result = null
         selectedCourseId = course.id
         activeCourseId = course.id
-        if (next != null && next.id in unlockedLessonIds) {
+        if (next != null && isLessonUnlocked(next.id)) {
             courseDetailFocusLessonId = next.id
             currentScreen = AppScreen.COURSE_DETAIL
         } else {
@@ -907,7 +1034,7 @@ class CodeQuestAppState {
         }
         val nextCourse = LocalContentRepository.nextCourseAfter(r.courseId)
         result = null
-        if (nextCourse != null && nextCourse.id in unlockedCourseIds) {
+        if (nextCourse != null && isCourseUnlocked(nextCourse.id)) {
             openCourseDetail(nextCourse.id)
         } else {
             goToLearningPath()
@@ -922,8 +1049,12 @@ class CodeQuestAppState {
         if (lesson.id in completedLessonIds) {
             completedActivityIds = completedActivityIds + lesson.activities.map { it.id }.toSet()
         }
+        if (demoModeEnabled) {
+            completedActivityIds = completedActivityIds - lesson.activities.map { it.id }.toSet()
+            completedLessonIds = completedLessonIds - lessonId
+        }
         val resumeIdx = lesson.activities.indexOfFirst { it.id !in completedActivityIds }
-        if (resumeIdx < 0) {
+        if (resumeIdx < 0 && !demoModeEnabled) {
             lessonEntryBlockedNotice =
                 "You already completed every question in this lesson. Retakes are disabled."
             result = null
@@ -946,7 +1077,68 @@ class CodeQuestAppState {
         lessonOneWrongAttempts = 0
         resetInteractionForActivity()
         initCommandSlots()
+        applyRobotDemoGuideIfNeeded(lessonId, if (resumeIdx == 0) 0 else resumeIdx)
         currentScreen = AppScreen.LESSON_ACTIVITY
+    }
+
+    fun hasPendingAchievements(): Boolean = pendingUnlockedAchievements.isNotEmpty()
+
+    fun peekPendingAchievement(): Achievement? = pendingUnlockedAchievements.firstOrNull()
+
+    fun consumeNextPendingAchievement() {
+        if (pendingUnlockedAchievements.isNotEmpty()) {
+            pendingUnlockedAchievements = pendingUnlockedAchievements.drop(1)
+        }
+    }
+
+    fun earnedAchievementsForDisplay(): List<Achievement> =
+        LocalContentRepository.achievements.filter { it.id in earnedAchievementIds }
+
+    private fun grantAchievementIfNew(achievementId: String) {
+        if (achievementId in earnedAchievementIds) return
+        val achievement = LocalContentRepository.achievementById(achievementId) ?: return
+        earnedAchievementIds = earnedAchievementIds + achievementId
+        pendingUnlockedAchievements = pendingUnlockedAchievements + achievement
+        syncBadgeForAchievement(achievementId)
+        val updates = badgeProgress.toMutableMap()
+        updates[achievementId] = 1
+        badgeProgress = updates
+    }
+
+    private fun syncBadgeForAchievement(achievementId: String) {
+        when (achievementId) {
+            "first-steps", "thinking-coder" -> earnedBadgeIds = earnedBadgeIds + achievementId
+        }
+    }
+
+    private fun checkAchievementsAfterActivity(activity: ActivityItem) {
+        if (completedActivityIds.isNotEmpty()) {
+            grantAchievementIfNew("first-steps")
+        }
+        if (activity.type == ActivityType.DEBUG_CODE || activity.type == ActivityType.FILL_IN_BLANK) {
+            grantAchievementIfNew("debug-learner")
+        }
+        if (activity.isRedTargetCommandSequence()) {
+            grantAchievementIfNew("red-target-finder")
+        }
+    }
+
+    private fun checkAchievementsAfterLesson(
+        course: Course,
+        questionsCorrect: Int,
+        totalActivities: Int
+    ) {
+        if (completedLessonIds.isNotEmpty() || completedActivityIds.isNotEmpty()) {
+            grantAchievementIfNew("first-steps")
+        }
+        if (totalActivities > 0 && questionsCorrect == totalActivities) {
+            grantAchievementIfNew("perfect-start")
+        }
+        if (course.id == "thinking-in-code" &&
+            course.lessons.all { it.id in completedLessonIds }
+        ) {
+            grantAchievementIfNew("thinking-coder")
+        }
     }
 
     private fun updateBadges() {
@@ -1096,6 +1288,7 @@ class CodeQuestAppState {
         currentProcessStepIndex = 0
         pendingAnswerCorrect = false
         pendingSubmittedIndex = -1
+        fillInAnswer = ""
         isAnswerChecked = false
         activityCommandSlots = emptyList()
         commandPlaybackCommandsSnapshot = emptyList()
@@ -1119,9 +1312,14 @@ class CodeQuestAppState {
         lessonReviewMode = false
         completedCourseIds = emptySet()
         lessonEntryBlockedNotice = null
+        demoModeEnabled = false
+        ticL2RobotGuideSeen = false
+        robotDemoGuideStep = 0
         unlockedCourseIds = setOf("thinking-in-code")
         unlockedLessonIds = setOf("tic-l1")
         earnedBadgeIds = emptySet()
+        earnedAchievementIds = emptySet()
+        pendingUnlockedAchievements = emptyList()
         badgeProgress = mapOf(
             "first-steps" to 0,
             "thinking-coder" to 0,

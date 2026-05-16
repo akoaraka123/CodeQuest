@@ -9,6 +9,7 @@ data class ActivityCompletionRecord(
     val correct: Boolean,
     val xpGranted: Int,
     val selectedMcIndex: Int? = null,
+    val fillInAnswer: String? = null,
     /** Normalized command tokens for command-sequence activities. */
     val commandTokens: List<String>? = null,
     val playbackSummary: String? = null

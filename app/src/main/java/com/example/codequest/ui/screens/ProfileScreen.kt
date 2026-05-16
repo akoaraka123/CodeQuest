@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,7 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,8 +26,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.codequest.data.LocalContentRepository
 import com.example.codequest.ui.components.AccountSettingsSection
+import com.example.codequest.ui.components.GlassCard
 import com.example.codequest.ui.components.AppTab
 import com.example.codequest.ui.components.BottomNavigationBar
 import com.example.codequest.ui.components.HeaderSection
@@ -75,13 +79,20 @@ fun CodeQuestProfileScreen(
             accent = accent
         )
     }
-    val achievements = LocalContentRepository.profileAchievements.map {
-        val accent = when (it.title) {
-            "Logic Learner" -> PrimaryPurple
-            "Streak Master" -> BadgeGold
+    val achievements = appState.earnedAchievementsForDisplay().map { earned ->
+        val accent = when (earned.id) {
+            "perfect-start" -> BadgeGold
+            "thinking-coder" -> PrimaryPurple
+            "red-target-finder" -> CompletedGreen
             else -> ActiveCyan
         }
-        AchievementUiModel(it.icon, it.title, it.description, it.date, accent)
+        AchievementUiModel(
+            icon = earned.icon,
+            title = earned.title,
+            description = earned.description,
+            date = "Earned",
+            accent = accent
+        )
     }
     val settingsItems = listOf(
         SettingsItemUiModel("\uD83D\uDC64", "Edit Profile", onClick = { appState.openEditProfile() }),
@@ -142,6 +153,36 @@ fun CodeQuestProfileScreen(
                     Text("No achievements yet", color = TextMuted)
                 } else {
                     MyAchievementsSection(achievements)
+                }
+            }
+            item { SectionHeader("Developer") }
+            item {
+                GlassCard {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Demo mode",
+                                color = TextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp
+                            )
+                            Text(
+                                text = "Unlock all courses and lessons; retake any activity for testing.",
+                                color = TextMuted,
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                        Switch(
+                            checked = appState.demoModeEnabled,
+                            onCheckedChange = appState::applyDemoMode
+                        )
+                    }
                 }
             }
             item { SectionHeader("Account & Settings") }

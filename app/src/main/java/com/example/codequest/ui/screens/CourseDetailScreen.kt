@@ -100,10 +100,10 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
 
         val sortedLessons = course.lessons.sortedBy { it.order }
         val focusLessonId = appState.courseDetailFocusLessonId ?: sortedLessons.firstOrNull {
-            it.id in appState.unlockedLessonIds
+            appState.isLessonUnlocked(it.id)
         }?.id
         val focusLesson = sortedLessons.firstOrNull { it.id == focusLessonId }
-            ?: sortedLessons.firstOrNull { it.id in appState.unlockedLessonIds }
+            ?: sortedLessons.firstOrNull { appState.isLessonUnlocked(it.id) }
 
         val levelDisplay = focusLesson?.let {
             appState.lessonLevelDisplay(it.id, course.id)
@@ -132,7 +132,7 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
 
         LessonPathDotsRow(
             lessons = sortedLessons,
-            unlocked = appState.unlockedLessonIds,
+            unlocked = appState.effectiveUnlockedLessonIds(),
             completed = appState.completedLessonIds,
             focusedId = focusLesson?.id
         )
@@ -146,17 +146,18 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
         )
 
         val canStartFocus = focusLesson != null &&
-            focusLesson.id in appState.unlockedLessonIds &&
-            focusLesson.id !in appState.completedLessonIds
+            appState.isLessonUnlocked(focusLesson.id) &&
+            (appState.demoModeEnabled || focusLesson.id !in appState.completedLessonIds)
         val primaryLessonButtonLabel = when {
             focusLesson == null -> "Start"
+            appState.demoModeEnabled -> "Start lesson (demo)"
             focusLesson.id in appState.completedLessonIds -> "Review lesson"
             appState.lessonHasAnyCompletedActivity(focusLesson) && appState.lessonHasIncompleteActivity(focusLesson) ->
                 "Continue lesson"
             else -> "Start"
         }
         GradientButton(text = primaryLessonButtonLabel) {
-            if (focusLesson != null && focusLesson.id in appState.unlockedLessonIds) {
+            if (focusLesson != null && appState.isLessonUnlocked(focusLesson.id)) {
                 appState.selectCourseDetailLesson(focusLesson.id)
                 appState.startLessonFromCourseDetail()
             }
@@ -186,7 +187,7 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
         GlassCard(cornerRadius = 20.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 sortedLessons.forEachIndexed { idx, lesson ->
-                    val locked = lesson.id !in appState.unlockedLessonIds
+                    val locked = !appState.isLessonUnlocked(lesson.id)
                     val done = lesson.id in appState.completedLessonIds
                     val chosen = lesson.id == focusLesson?.id
                     val subtitle = lesson.pathCardSubtitle?.takeIf { it.isNotBlank() }
@@ -369,8 +370,9 @@ private fun FocusLessonActivitiesCard(
             focusLesson.activities.forEachIndexed { i, act ->
                 val completed = act.id in appState.completedActivityIds
                 val isCurrent = !lessonDone && nextIdx >= 0 && i == nextIdx
-                val isLocked = !completed && !isCurrent
+                val isLocked = !appState.demoModeEnabled && !completed && !isCurrent
                 val statusText = when {
+                    appState.demoModeEnabled -> "Open (demo)"
                     completed -> "Completed — replay"
                     isCurrent -> "Continue"
                     else -> "Not started"
@@ -389,10 +391,13 @@ private fun FocusLessonActivitiesCard(
                             RoundedCornerShape(14.dp)
                         )
                         .clickable(
-                            enabled = (completed || isCurrent) && focusLesson.id in appState.unlockedLessonIds
+                            enabled = appState.isLessonUnlocked(focusLesson.id) &&
+                                (appState.demoModeEnabled || completed || isCurrent)
                         ) {
                             appState.selectCourseDetailLesson(focusLesson.id)
-                            if (completed) {
+                            if (appState.demoModeEnabled) {
+                                appState.startLessonFromCourseDetail(startAtActivityIndex = i)
+                            } else if (completed) {
                                 appState.openCompletedActivityReview(courseId, focusLesson.id, i)
                             } else {
                                 appState.startLessonFromCourseDetail()
