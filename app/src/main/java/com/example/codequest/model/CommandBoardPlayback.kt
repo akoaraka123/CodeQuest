@@ -13,12 +13,12 @@ enum class Direction {
     LEFT
 }
 
-/** Degrees for [androidx.compose.ui.graphics.graphicsLayer]; neutral pose faces [Direction.RIGHT]. */
+/** Degrees for [androidx.compose.ui.graphics.graphicsLayer]; neutral pose (0°) faces [Direction.UP] (antenna at top). */
 fun Direction.rotationZDegrees(): Float = when (this) {
-    Direction.RIGHT -> 0f
-    Direction.DOWN -> 90f
-    Direction.LEFT -> 180f
-    Direction.UP -> 270f
+    Direction.UP -> 0f
+    Direction.RIGHT -> 90f
+    Direction.DOWN -> 180f
+    Direction.LEFT -> 270f
 }
 
 fun Direction.turnRight(): Direction = when (this) {

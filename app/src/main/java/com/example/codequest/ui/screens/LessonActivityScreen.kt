@@ -1420,8 +1420,12 @@ private fun CommandSequenceRevealBlock(
                     rotAnim.snapTo(step.afterDirection.rotationZDegrees())
                     delay(PLAYBACK_STEP_PAUSE_MS.toLong())
                 }
-                "turn right", "turn left" -> {
-                    rotAnim.animateTo(step.afterDirection.rotationZDegrees(), turnSpec)
+                "turn right" -> {
+                    rotAnim.animateTo(rotAnim.value + 90f, turnSpec)
+                    delay(PLAYBACK_STEP_PAUSE_MS.toLong())
+                }
+                "turn left" -> {
+                    rotAnim.animateTo(rotAnim.value - 90f, turnSpec)
                     delay(PLAYBACK_STEP_PAUSE_MS.toLong())
                 }
                 "select red" -> {
