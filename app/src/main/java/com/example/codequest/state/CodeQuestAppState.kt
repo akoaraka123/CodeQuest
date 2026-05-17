@@ -6,7 +6,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.codequest.data.LocalContentRepository
+import com.example.codequest.data.LocalRatingRepository
+import com.example.codequest.model.AppRating
 import com.example.codequest.model.ActivityCompletionRecord
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.example.codequest.model.ActivityItem
 import com.example.codequest.model.ActivityType
 import com.example.codequest.model.fillInAnswerMatches
@@ -100,6 +105,8 @@ class CodeQuestAppState {
         completedCourseIds = p.getStringSet("completedCourseIds", emptySet())?.toSet() ?: emptySet()
         earnedBadgeIds = p.getStringSet("earnedBadgeIds", emptySet())?.toSet() ?: emptySet()
         earnedAchievementIds = p.getStringSet("earnedAchievementIds", emptySet())?.toSet() ?: emptySet()
+        hasSeenPathCompletionCelebration = p.getBoolean("hasSeenPathCompletionCelebration", false)
+        hasSubmittedRating = p.getBoolean("hasSubmittedRating", false)
         totalXP = p.getInt("totalXP", 0)
         streakDays = p.getInt("streakDays", 0)
         debugCorrectCount = p.getInt("debugCorrectCount", 0)
@@ -158,6 +165,8 @@ class CodeQuestAppState {
             putStringSet("completedCourseIds", completedCourseIds)
             putStringSet("earnedBadgeIds", earnedBadgeIds)
             putStringSet("earnedAchievementIds", earnedAchievementIds)
+            putBoolean("hasSeenPathCompletionCelebration", hasSeenPathCompletionCelebration)
+            putBoolean("hasSubmittedRating", hasSubmittedRating)
             putInt("totalXP", totalXP)
             putInt("streakDays", streakDays)
             putInt("debugCorrectCount", debugCorrectCount)
@@ -492,6 +501,12 @@ class CodeQuestAppState {
     var earnedAchievementIds by mutableStateOf(emptySet<String>())
         private set
 
+    var hasSeenPathCompletionCelebration by mutableStateOf(false)
+        private set
+
+    var hasSubmittedRating by mutableStateOf(false)
+        private set
+
     var pendingUnlockedAchievements by mutableStateOf(listOf<Achievement>())
         private set
 
@@ -569,12 +584,18 @@ class CodeQuestAppState {
 
     fun totalExp(): Int = totalXP
 
-    fun courseExp(courseId: String): Int = (courseLearningXp[courseId] ?: 0).coerceAtMost(500)
-
-    fun levelFromExp(): Int {
-        val exp = totalExp()
-        return if (exp == 0) 0 else (exp / 500) + 1
+    fun courseExp(courseId: String): Int {
+        val course = getCourse(courseId) ?: return 0
+        val courseActivityIds = course.lessons
+            .flatMap { lesson -> lesson.activities.map { a -> a.id } }
+            .toSet()
+        return activityCompletionRecords.values
+            .filter { it.activityId in courseActivityIds && it.correct }
+            .sumOf { it.xpGranted }
+            .coerceAtMost(500)
     }
+
+    fun levelFromExp(): Int = (totalExp() / 500) + 1
 
     fun levelCurrentExp(): Int = totalExp() % 500
 
@@ -1258,7 +1279,11 @@ class CodeQuestAppState {
         val doneCount = course.lessons.count { it.id in completedLessonIds }
         courseCompletedLessonCounts[course.id] = doneCount
         unlockNextLesson(course.id, lesson.id)
-        if (course.lessons.all { it.id in completedLessonIds }) {
+        val isLastCourse = course.id == courseOrder.lastOrNull()?.id
+        val isLastLesson = course.lessons.maxByOrNull { it.order }?.id == lesson.id
+        if (demoModeEnabled && isLastCourse && isLastLesson) {
+            completedCourseIds = completedCourseIds + course.id
+        } else if (course.lessons.all { it.id in completedLessonIds }) {
             completedCourseIds = completedCourseIds + course.id
             unlockNextCourse(course.id)
         }
@@ -1776,6 +1801,55 @@ class CodeQuestAppState {
         )
         courseLearningXp = courseOrder.associate { it.id to 0 }.toMutableMap()
         courseCompletedLessonCounts = courseOrder.associate { it.id to 0 }.toMutableMap()
+        hasSeenPathCompletionCelebration = false
+        hasSubmittedRating = false
+    }
+
+    fun isLearningPathComplete(): Boolean {
+        if (demoModeEnabled) {
+            return courseOrder.lastOrNull()?.id?.let { it in completedCourseIds } ?: false
+        }
+        return courseOrder.isNotEmpty() && courseOrder.all { it.id in completedCourseIds }
+    }
+
+    fun markPathCompletionCelebrationSeen() {
+        hasSeenPathCompletionCelebration = true
+        saveProgress()
+    }
+
+    fun submitAppRating(rating: Int, comment: String) {
+        hasSubmittedRating = true
+        LocalRatingRepository.submit(
+            AppRating(
+                id = "${currentUserId}_${System.currentTimeMillis()}",
+                studentId = currentUserId.ifEmpty { "anonymous" },
+                studentName = username,
+                rating = rating,
+                comment = comment.trim(),
+                submittedAt = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date())
+            )
+        )
+        saveProgress()
+        goHome()
+    }
+
+    fun skipAppRating() {
+        goHome()
+    }
+
+    fun markAllCoursesCompleteForDebug() {
+        val allActivities = courseOrder.flatMap { c -> c.lessons.flatMap { l -> l.activities } }
+        completedCourseIds = courseOrder.map { it.id }.toSet()
+        completedLessonIds = courseOrder.flatMap { c -> c.lessons.map { l -> l.id } }.toSet()
+        completedActivityIds = allActivities.map { it.id }.toSet()
+        activityCompletionRecords = allActivities.associate { a ->
+            a.id to ActivityCompletionRecord(activityId = a.id, correct = true, xpGranted = a.xpReward)
+        }
+        courseCompletedLessonCounts = courseOrder.associate { course ->
+            course.id to course.lessons.size
+        }.toMutableMap()
+        syncExpTotalsFromCompletionRecords()
+        saveProgress()
     }
 
     fun resetAllProgressForDebug() {

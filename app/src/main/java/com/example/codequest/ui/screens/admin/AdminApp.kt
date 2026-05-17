@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codequest.data.LocalPasswordResetRepository
+import com.example.codequest.data.LocalRatingRepository
 import com.example.codequest.data.LocalUserRepository
 import com.example.codequest.data.LocalContentRepository
 import com.example.codequest.model.UserRole
@@ -144,7 +145,7 @@ private fun AdminTabContent(
                 totalCourses = courses.size,
                 totalLessons = totalLessons,
                 averageXp = avgXp,
-                hasUnreadNotifications = LocalPasswordResetRepository.hasUnreadRequests(),
+                hasUnreadNotifications = LocalPasswordResetRepository.hasUnreadRequests() || LocalRatingRepository.hasUnreadRatings(),
                 onNotificationsClick = onOpenNotifications,
                 onLogout = onLogout
             )

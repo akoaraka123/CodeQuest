@@ -186,6 +186,11 @@ fun CodeQuestProfileScreen(
                     }
                 }
             }
+            item {
+                com.example.codequest.ui.components.GradientButton(
+                    text = "Complete All Challenges (Debug)"
+                ) { appState.markAllCoursesCompleteForDebug() }
+            }
             item { SectionHeader("Account & Settings") }
             item { AccountSettingsSection(settingsItems) }
             item { Spacer(modifier = Modifier.height(112.dp)) }

@@ -20,8 +20,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.codequest.data.LocalRatingRepository
 import com.example.codequest.data.LocalUserRepository
 import com.example.codequest.model.UserRole
+import com.example.codequest.ui.theme.BadgeGold
+import com.example.codequest.ui.theme.CompletedGreen
 import com.example.codequest.ui.components.GlassCard
 import com.example.codequest.ui.theme.ActiveCyan
 import com.example.codequest.ui.theme.BackgroundEnd
@@ -38,6 +41,9 @@ fun AdminReportsScreen() {
     val avgXp = if (students.isNotEmpty()) students.sumOf { it.totalXP } / students.size else 0
     val totalLessonsDone = students.sumOf { it.completedLessons }
     val top = students.maxByOrNull { it.totalXP }
+    val ratings = LocalRatingRepository.ratings.toList()
+    val avgRating = LocalRatingRepository.averageRating()
+    val totalRatings = ratings.size
 
     Column(
         modifier = Modifier
@@ -76,6 +82,49 @@ fun AdminReportsScreen() {
                     fontSize = 13.sp,
                     lineHeight = 18.sp
                 )
+            }
+        }
+
+        ReportCard(label = "Total App Ratings", value = if (totalRatings == 0) "No ratings yet" else "$totalRatings")
+        if (totalRatings > 0) {
+            ReportCard(
+                label = "Average App Rating",
+                value = "${"%.1f".format(avgRating)} / 5  ★"
+            )
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Latest Ratings", color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                    ratings.take(5).forEach { r ->
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            androidx.compose.foundation.layout.Row(
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    r.studentName,
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    "${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}",
+                                    color = BadgeGold,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            if (r.comment.isNotBlank()) {
+                                Text(
+                                    "\"${r.comment}\"",
+                                    color = TextMuted,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp
+                                )
+                            }
+                            Text(r.submittedAt, color = TextMuted, fontSize = 11.sp)
+                        }
+                    }
+                }
             }
         }
         Spacer(modifier = Modifier.height(96.dp))

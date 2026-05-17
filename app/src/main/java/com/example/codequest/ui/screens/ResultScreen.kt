@@ -32,7 +32,9 @@ import com.example.codequest.ui.components.CodeQuestBackButton
 import com.example.codequest.ui.components.GlassCard
 import com.example.codequest.ui.components.GradientButton
 import com.example.codequest.ui.components.GoodEffortCelebrationOverlay
+import com.example.codequest.ui.components.PathCompletionCelebrationOverlay
 import com.example.codequest.ui.components.PerfectScoreCelebrationOverlay
+import com.example.codequest.ui.components.RatingModal
 import com.example.codequest.ui.theme.BackgroundEnd
 import com.example.codequest.ui.theme.BackgroundStart
 import com.example.codequest.ui.theme.CompletedGreen
@@ -60,12 +62,26 @@ fun CodeQuestResultScreen(appState: CodeQuestAppState) {
     var showAchievementOverlay by remember(result?.lessonId, result?.courseId) {
         mutableStateOf(false)
     }
+    var showPathCompletion by remember(result?.lessonId, result?.courseId) {
+        mutableStateOf(false)
+    }
+    var showRatingModal by remember(result?.lessonId, result?.courseId) {
+        mutableStateOf(false)
+    }
+
+    fun proceedAfterAllOverlays() {
+        if (appState.isLearningPathComplete() && !appState.hasSeenPathCompletionCelebration) {
+            showPathCompletion = true
+        } else if (hadScoreCelebration) {
+            appState.returnToCourseDetailAfterLessonCompletion()
+        }
+    }
 
     fun beginAchievementChainIfNeeded() {
         if (appState.hasPendingAchievements()) {
             showAchievementOverlay = true
-        } else if (hadScoreCelebration) {
-            appState.returnToCourseDetailAfterLessonCompletion()
+        } else {
+            proceedAfterAllOverlays()
         }
     }
 
@@ -80,10 +96,28 @@ fun CodeQuestResultScreen(appState: CodeQuestAppState) {
             showAchievementOverlay = true
         } else {
             showAchievementOverlay = false
-            if (hadScoreCelebration) {
-                appState.returnToCourseDetailAfterLessonCompletion()
-            }
+            proceedAfterAllOverlays()
         }
+    }
+
+    fun onPathCompletionContinue() {
+        appState.markPathCompletionCelebrationSeen()
+        showPathCompletion = false
+        if (!appState.hasSubmittedRating) {
+            showRatingModal = true
+        } else {
+            appState.goHome()
+        }
+    }
+
+    fun onRatingSubmit(rating: Int, comment: String) {
+        showRatingModal = false
+        appState.submitAppRating(rating, comment)
+    }
+
+    fun onRatingSkip() {
+        showRatingModal = false
+        appState.skipAppRating()
     }
 
     LaunchedEffect(result?.lessonId, result?.courseId, scoreCelebrationFinished) {
@@ -96,6 +130,8 @@ fun CodeQuestResultScreen(appState: CodeQuestAppState) {
 
     BackHandler {
         when {
+            showRatingModal -> onRatingSkip()
+            showPathCompletion -> { /* back disabled during final celebration */ }
             showAchievementOverlay -> onAchievementStepFinished()
             appState.result != null -> {
                 if (hadScoreCelebration) {
@@ -219,6 +255,22 @@ fun CodeQuestResultScreen(appState: CodeQuestAppState) {
                     )
                 }
             }
+        }
+
+        if (showPathCompletion) {
+            PathCompletionCelebrationOverlay(
+                visible = true,
+                modifier = Modifier.fillMaxSize(),
+                onContinue = ::onPathCompletionContinue
+            )
+        }
+
+        if (showRatingModal) {
+            RatingModal(
+                modifier = Modifier.fillMaxSize(),
+                onSubmit = ::onRatingSubmit,
+                onSkip = ::onRatingSkip
+            )
         }
     }
 }

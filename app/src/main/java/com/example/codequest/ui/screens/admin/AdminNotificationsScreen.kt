@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -23,9 +24,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.LaunchedEffect
 import com.example.codequest.data.LocalPasswordResetRepository
+import com.example.codequest.data.LocalRatingRepository
+import com.example.codequest.model.AppRating
 import com.example.codequest.model.PasswordResetRequest
 import com.example.codequest.model.ResetRequestStatus
+import com.example.codequest.ui.theme.BadgeGold
 import com.example.codequest.ui.components.CodeQuestBackButton
 import com.example.codequest.ui.components.GlassCard
 import com.example.codequest.ui.components.GradientButton
@@ -40,6 +45,12 @@ fun AdminNotificationsScreen(
     onBack: () -> Unit
 ) {
     BackHandler { onBack() }
+
+    LaunchedEffect(Unit) {
+        LocalRatingRepository.markAllRead()
+    }
+
+    val ratings = LocalRatingRepository.ratings.toList()
 
     LazyColumn(
         modifier = Modifier
@@ -62,6 +73,29 @@ fun AdminNotificationsScreen(
             }
         }
 
+        if (ratings.isNotEmpty()) {
+            item {
+                Text(
+                    "App Ratings",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp
+                )
+            }
+            items(ratings, key = { it.id }) { rating ->
+                RatingNotificationCard(rating = rating)
+            }
+            item { Spacer(modifier = Modifier.height(4.dp)) }
+        }
+
+        item {
+            Text(
+                "Password Reset Requests",
+                color = TextPrimary,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp
+            )
+        }
         if (LocalPasswordResetRepository.requests.isEmpty()) {
             item {
                 GlassCard {
@@ -118,6 +152,44 @@ private fun PasswordResetRequestCard(request: PasswordResetRequest) {
                 GradientButton(text = "Mark as Reviewed") {
                     LocalPasswordResetRepository.markAsReviewed(request.id)
                 }
+            }
+        }
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun RatingNotificationCard(rating: AppRating) {
+    GlassCard {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("⭐", fontSize = 22.sp)
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        "New App Rating",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        "${rating.studentName} rated CodeQuest ${rating.rating}/5 stars.",
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RequestPill(text = "${"★".repeat(rating.rating)}${"☆".repeat(5 - rating.rating)}")
+                Spacer(modifier = Modifier.width(8.dp))
+                RequestPill(text = rating.submittedAt)
+            }
+            if (rating.comment.isNotBlank()) {
+                Text(
+                    "\"${rating.comment}\"",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
+                )
             }
         }
     }
