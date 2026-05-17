@@ -71,7 +71,7 @@ fun BadgeMetricsRow(
             DividerLine()
             MetricColumn(icon = "🔥", value = dayStreak.toString(), label = "Day Streak")
             DividerLine()
-            MetricColumn(icon = "💎", value = totalXp.toString(), label = "Total XP")
+            MetricColumn(icon = "⚡", value = totalXp.toString(), label = "Total EXP")
         }
     }
 }

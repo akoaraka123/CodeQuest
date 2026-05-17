@@ -133,8 +133,8 @@ fun AdminDashboardScreen(
         Spacer(modifier = Modifier.height(10.dp))
         SummaryTile(
             modifier = Modifier.fillMaxWidth(),
-            label = "Average XP (students)",
-            value = "$averageXp XP",
+            label = "Average EXP (students)",
+            value = "$averageXp EXP",
             accent = ActiveCyan
         )
         Spacer(modifier = Modifier.height(100.dp))

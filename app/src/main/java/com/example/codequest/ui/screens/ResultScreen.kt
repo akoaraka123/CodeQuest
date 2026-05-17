@@ -166,7 +166,7 @@ fun CodeQuestResultScreen(appState: CodeQuestAppState) {
                         )
                     }
                     Text(
-                        text = "XP earned this lesson: ${result?.xpEarned ?: 0}",
+                        text = "EXP earned this lesson: ${result?.xpEarned ?: 0}",
                         color = CompletedGreen,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold

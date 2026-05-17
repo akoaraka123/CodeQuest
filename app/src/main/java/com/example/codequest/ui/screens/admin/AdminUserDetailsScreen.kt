@@ -92,7 +92,7 @@ fun AdminUserDetailsScreen(
             }
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DetailRow("Total XP", "${user.totalXP} XP")
+                    DetailRow("Total EXP", "${user.totalXP} EXP")
                     DetailRow("Completed lessons", "${user.completedLessons}")
                     DetailRow("Completed courses", "${user.completedCourses}")
                     DetailRow("Badges earned", "${user.badgesEarned}")

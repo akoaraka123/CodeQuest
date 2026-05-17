@@ -37,11 +37,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codequest.model.ProcessStep
@@ -88,9 +90,9 @@ fun LearningPathStatsRow(
         )
         StatMiniCard(
             modifier = Modifier.weight(1f),
-            icon = "💎",
-            label = "Total XP Earned",
-            value = "$totalXp XP"
+            icon = "⚡",
+            label = "Total EXP Earned",
+            value = "$totalXp EXP"
         )
     }
 }
@@ -147,11 +149,9 @@ fun CourseCard(course: CourseUiModel, onClick: () -> Unit) {
     GlassCard(
         modifier = Modifier
             .fillMaxWidth()
+            .alpha(if (course.status == CourseProgressStatus.LOCKED) 0.52f else 1f)
             .clip(RoundedCornerShape(18.dp))
-            .clickable(
-                enabled = course.status != CourseProgressStatus.LOCKED,
-                onClick = onClick
-            ),
+            .clickable(onClick = onClick),
         cornerRadius = 18.dp,
         borderBrush = borderBrush
     ) {
@@ -184,13 +184,16 @@ fun CourseCard(course: CourseUiModel, onClick: () -> Unit) {
                         text = course.title,
                         color = TextPrimary,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp
+                        fontSize = 17.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     CourseStatusBadge(status = course.status)
                 }
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(text = course.description, color = TextMuted, fontSize = 12.sp)
+                Text(text = course.description, color = TextMuted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Spacer(modifier = Modifier.height(8.dp))
                 CourseProgressLine(progress = course.progress, status = course.status)
                 Spacer(modifier = Modifier.height(6.dp))
@@ -269,7 +272,7 @@ private fun CourseStatusBadge(status: CourseProgressStatus) {
             .background(bg)
             .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
-        Text(text = label, color = fg, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(text = label, color = fg, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
     }
 }
 

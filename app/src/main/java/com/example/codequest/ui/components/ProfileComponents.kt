@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codequest.ui.theme.ActiveCyan
@@ -125,7 +126,7 @@ fun ProfileStatsRow(
     badgesEarned: Int
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        ProfileStatCard("💎", totalXp.toString(), "Total XP", ActiveCyan, Modifier.weight(1f))
+        ProfileStatCard("⚡", totalXp.toString(), "Total EXP", ActiveCyan, Modifier.weight(1f))
         ProfileStatCard("📚", lessonsCompleted.toString(), "Lessons\nDone", CompletedGreen, Modifier.weight(1f))
         ProfileStatCard("🎓", coursesCompleted.toString(), "Courses\nDone", PrimaryPurple, Modifier.weight(1f))
         ProfileStatCard("🛡️", badgesEarned.toString(), "Badges\nEarned", BadgeGold, Modifier.weight(1f))
@@ -157,10 +158,23 @@ fun LearningStatsSection(items: List<LearningStatUiModel>) {
 
 @Composable
 fun LearningStatRow(item: LearningStatUiModel) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Text(text = item.icon, color = item.accent, fontSize = 14.sp)
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(text = item.title, color = TextPrimary, fontSize = 14.sp, modifier = Modifier.width(52.dp))
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = item.title,
+            color = TextPrimary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            softWrap = false,
+            modifier = Modifier.width(124.dp)
+        )
+        Spacer(modifier = Modifier.width(7.dp))
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -173,11 +187,18 @@ fun LearningStatRow(item: LearningStatUiModel) {
                     .fillMaxWidth(item.progress)
                     .height(8.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(item.accent)
+                .background(item.accent)
             )
         }
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text = item.xpText, color = TextMuted, fontSize = 12.sp)
+        Spacer(modifier = Modifier.width(7.dp))
+        Text(
+            text = item.xpText,
+            color = TextMuted,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Clip,
+            softWrap = false
+        )
     }
 }
 

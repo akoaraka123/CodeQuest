@@ -131,7 +131,7 @@ private fun AdminTabContent(
     val students = LocalUserRepository.users.filter { it.role == UserRole.STUDENT }
     val allUsers = LocalUserRepository.users.toList()
     val activeStudents = students.count { it.status == UserStatus.ACTIVE }
-    val courses = LocalContentRepository.courses.sortedBy { it.order }
+    val courses = LocalContentRepository.visibleCourses
     val totalLessons = courses.sumOf { it.lessons.size }
     val totalXp = students.sumOf { it.totalXP }
     val avgXp = if (students.isNotEmpty()) totalXp / students.size else 0

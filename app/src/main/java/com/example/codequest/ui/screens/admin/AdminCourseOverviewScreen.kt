@@ -41,7 +41,7 @@ private enum class CourseAdminStatus {
 
 @Composable
 fun AdminCourseOverviewScreen() {
-    val courses = LocalContentRepository.courses.sortedBy { it.order }
+    val courses = LocalContentRepository.visibleCourses
 
     Column(
         modifier = Modifier
@@ -99,7 +99,6 @@ private fun StatusLine(status: CourseAdminStatus) {
 
 private fun demoCourseStatus(courseId: String): CourseAdminStatus = when (courseId) {
     "thinking-in-code", "programming-variables" -> CourseAdminStatus.AVAILABLE
-    "thinking-python", "programming-functions", "neural-intro" -> CourseAdminStatus.LOCKED
-    "algorithmic-thinking", "cs-fundamentals" -> CourseAdminStatus.DRAFT
+    "python-input-output", "python-conditions" -> CourseAdminStatus.LOCKED
     else -> CourseAdminStatus.AVAILABLE
 }

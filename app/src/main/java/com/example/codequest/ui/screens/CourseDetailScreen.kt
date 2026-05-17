@@ -84,7 +84,7 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(text = "⚡", fontSize = 14.sp)
                     Text(
-                        text = "${appState.totalXP}",
+                        text = "${appState.totalExp()} EXP",
                         color = CompletedGreen,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
@@ -108,6 +108,18 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
         val levelDisplay = focusLesson?.let {
             appState.lessonLevelDisplay(it.id, course.id)
         } ?: 1
+        val canStartFocus = focusLesson != null &&
+            appState.isLessonUnlocked(focusLesson.id) &&
+            (appState.demoModeEnabled || focusLesson.id !in appState.completedLessonIds)
+        val primaryLessonButtonLabel = when {
+            focusLesson == null -> "Start lesson"
+            appState.demoModeEnabled -> "Start lesson (demo)"
+            sortedLessons.all { it.id in appState.completedLessonIds } -> "Review Challenge"
+            focusLesson.id in appState.completedLessonIds -> "Review lesson"
+            appState.lessonHasAnyCompletedActivity(focusLesson) && appState.lessonHasIncompleteActivity(focusLesson) ->
+                "Continue lesson"
+            else -> "Start lesson"
+        }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -130,6 +142,18 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
             )
         }
 
+        CourseGuideCard(
+            courseId = course.id,
+            fallbackTitle = course.title,
+            buttonLabel = primaryLessonButtonLabel,
+            onStartClick = {
+                if (focusLesson != null && appState.isLessonUnlocked(focusLesson.id)) {
+                    appState.selectCourseDetailLesson(focusLesson.id)
+                    appState.startLessonFromCourseDetail()
+                }
+            }
+        )
+
         LessonPathDotsRow(
             lessons = sortedLessons,
             unlocked = appState.effectiveUnlockedLessonIds(),
@@ -145,17 +169,6 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
             courseId = course.id
         )
 
-        val canStartFocus = focusLesson != null &&
-            appState.isLessonUnlocked(focusLesson.id) &&
-            (appState.demoModeEnabled || focusLesson.id !in appState.completedLessonIds)
-        val primaryLessonButtonLabel = when {
-            focusLesson == null -> "Start"
-            appState.demoModeEnabled -> "Start lesson (demo)"
-            focusLesson.id in appState.completedLessonIds -> "Review lesson"
-            appState.lessonHasAnyCompletedActivity(focusLesson) && appState.lessonHasIncompleteActivity(focusLesson) ->
-                "Continue lesson"
-            else -> "Start"
-        }
         GradientButton(text = primaryLessonButtonLabel) {
             if (focusLesson != null && appState.isLessonUnlocked(focusLesson.id)) {
                 appState.selectCourseDetailLesson(focusLesson.id)
@@ -233,6 +246,142 @@ fun CodeQuestCourseDetailScreen(appState: CodeQuestAppState) {
         )
 
         Spacer(modifier = Modifier.height(48.dp))
+    }
+}
+
+private data class CourseGuideUi(
+    val title: String,
+    val level: String,
+    val description: String,
+    val learnItems: List<String>,
+    val guidedPractice: String
+)
+
+private fun guideForCourse(courseId: String, fallbackTitle: String): CourseGuideUi = when (courseId) {
+    "thinking-in-code" -> CourseGuideUi(
+        title = "Thinking in Python",
+        level = "Level 1",
+        description = "Learn how Python programs follow simple instructions step by step.",
+        learnItems = listOf(
+            "What a Python program is",
+            "How code runs in order",
+            "How simple commands create results"
+        ),
+        guidedPractice = "Start with beginner Python questions and simple code examples."
+    )
+    "programming-variables" -> CourseGuideUi(
+        title = "Python Variables",
+        level = "Level 2",
+        description = "Learn how Python stores values using variable names.",
+        learnItems = listOf(
+            "What variables are",
+            "How to name variables",
+            "How to store and update values",
+            "How to fix simple variable mistakes"
+        ),
+        guidedPractice = "Practice filling blanks, reading variables, and fixing simple code."
+    )
+    "python-input-output" -> CourseGuideUi(
+        title = "Python Input and Output",
+        level = "Level 3",
+        description = "Learn how Python receives input from users and displays output.",
+        learnItems = listOf(
+            "How print() shows output",
+            "How input() receives user information",
+            "How variables store user input",
+            "How to combine input and output"
+        ),
+        guidedPractice = "Complete code using input(), print(), and variables."
+    )
+    "python-conditions" -> CourseGuideUi(
+        title = "Python Conditions",
+        level = "Level 4",
+        description = "Learn how Python makes decisions using true-or-false checks.",
+        learnItems = listOf(
+            "What conditions are",
+            "How if statements work",
+            "How else handles the other result",
+            "How comparison operators check values",
+            "How to fix simple condition errors"
+        ),
+        guidedPractice = "Complete and debug Python conditions using if, else, ==, >=, and <."
+    )
+    else -> CourseGuideUi(
+        title = fallbackTitle,
+        level = "Level",
+        description = "Learn new coding skills through guided CodeQuest lessons.",
+        learnItems = listOf("Read code", "Answer questions", "Practice debugging"),
+        guidedPractice = "Start with guided practice, then continue through the lesson path."
+    )
+}
+
+@Composable
+private fun CourseGuideCard(
+    courseId: String,
+    fallbackTitle: String,
+    buttonLabel: String,
+    onStartClick: () -> Unit
+) {
+    val guide = guideForCourse(courseId, fallbackTitle)
+    GlassCard(cornerRadius = 20.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = guide.title,
+                        color = TextPrimary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = guide.level,
+                        color = ActiveCyan,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.5.sp
+                    )
+                }
+            }
+            Text(
+                text = guide.description,
+                color = TextMuted,
+                fontSize = 14.sp,
+                lineHeight = 20.sp
+            )
+            Text(
+                text = "What you will learn",
+                color = TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                guide.learnItems.forEach { item ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                        Text(text = "•", color = ActiveCyan, fontSize = 14.sp)
+                        Text(text = item, color = TextMuted, fontSize = 13.sp, lineHeight = 18.sp)
+                    }
+                }
+            }
+            Text(
+                text = "Guided practice",
+                color = TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = guide.guidedPractice,
+                color = TextMuted,
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
+            GradientButton(text = buttonLabel, onClick = onStartClick)
+        }
     }
 }
 

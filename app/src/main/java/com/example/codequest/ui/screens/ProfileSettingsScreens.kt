@@ -130,7 +130,7 @@ fun HelpSupportScreen(appState: CodeQuestAppState) {
             "What is CodeQuest?" to "CodeQuest is a coding-learning game prototype.",
             "How do I unlock quests?" to "Pass challenges with at least 70% score.",
             "How do I earn badges?" to "Complete quests and hit badge milestones.",
-            "How is XP calculated?" to "XP is gained from correct answers and completion."
+            "How is EXP calculated?" to "EXP is gained from correct answers."
         )
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(faqs) { faq ->

@@ -57,7 +57,7 @@ fun CodeQuestProfileScreen(
     onLogout: () -> Unit
 ) {
     val learningRows = appState.getCourses().mapIndexed { index, course ->
-        val value = appState.courseLearningXp[course.id] ?: 0
+        val value = appState.courseExp(course.id)
         val accent = when (index % 5) {
             0 -> ActiveCyan
             1 -> CompletedGreen
@@ -73,8 +73,8 @@ fun CodeQuestProfileScreen(
                 3 -> "\u25A6"
                 else -> "\u25FC"
             },
-            title = course.title.take(10),
-            xpText = "$value / 500 XP",
+            title = course.title,
+            xpText = "$value / 500 EXP",
             progress = value / 500f,
             accent = accent
         )
@@ -98,6 +98,7 @@ fun CodeQuestProfileScreen(
         SettingsItemUiModel("\uD83D\uDC64", "Edit Profile", onClick = { appState.openEditProfile() }),
         SettingsItemUiModel("\uD83C\uDFA8", "Theme", trailingText = appState.selectedTheme, onClick = { appState.openThemeSettings() }),
         SettingsItemUiModel("\uD83D\uDD14", "Notifications", onClick = { appState.openNotificationSettings() }),
+        SettingsItemUiModel("\uD83E\uDDED", "Show App Guide", onClick = { appState.startOnboardingGuide() }),
         SettingsItemUiModel("\u2753", "Help & Support", onClick = { appState.openHelpSupport() }),
         SettingsItemUiModel("\uD83D\uDEAA", "Logout", onClick = onLogout)
     )
@@ -124,7 +125,7 @@ fun CodeQuestProfileScreen(
             item {
                 MainProfileCard(
                     username = appState.username,
-                    level = if (appState.totalXP == 0) 0 else (appState.totalXP / 100) + 1,
+                    level = appState.levelFromExp(),
                     role = appState.roleTitle,
                     joinedDate = "Apr 12, 2025",
                     streakDays = appState.streakDays,
@@ -133,9 +134,9 @@ fun CodeQuestProfileScreen(
             }
             item {
                 ProfileStatsRow(
-                    totalXp = appState.totalXP,
+                    totalXp = appState.totalExp(),
                     lessonsCompleted = appState.completedLessonIds.size,
-                    coursesCompleted = appState.completedCourseIds.size,
+                    coursesCompleted = appState.visibleCompletedCourseCount(),
                     badgesEarned = appState.earnedBadgeIds.size
                 )
             }

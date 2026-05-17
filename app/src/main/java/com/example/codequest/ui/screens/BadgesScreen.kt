@@ -100,7 +100,7 @@ fun CodeQuestBadgesScreen(
                 BadgeMetricsRow(
                     badgesEarned = appState.earnedBadgeIds.size,
                     dayStreak = appState.streakDays,
-                    totalXp = appState.totalXP
+                    totalXp = appState.totalExp()
                 )
             }
             item {
@@ -145,7 +145,7 @@ fun CodeQuestBadgesScreen(
                     RecentAchievementsSection(
                         title = "First Steps",
                         subtitle = "Completed your first quest",
-                        xpText = "+100 XP",
+                        xpText = "+100 EXP",
                         timeText = "2h ago"
                     )
                 }

@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codequest.ui.theme.ActiveCyan
@@ -141,7 +142,7 @@ fun WelcomeCard(displayName: String, dayStreak: Int, codePoints: Int) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     StatPill("\uD83D\uDD25 $dayStreak Day Streak")
-                    StatPill("\uD83D\uDC8E $codePoints Code Points")
+                    StatPill("⚡ $codePoints EXP")
                 }
             }
         }
@@ -195,7 +196,7 @@ fun LevelProgressCard(
                 ProgressBar(progress = (currentXp.toFloat() / targetXp.toFloat()).coerceIn(0f, 1f))
             }
             Spacer(modifier = Modifier.width(12.dp))
-            Text(text = "$currentXp / $targetXp XP", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Text(text = "$currentXp / $targetXp EXP", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
         }
     }
 }
@@ -227,7 +228,15 @@ fun CurrentMissionCard(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = missionTitle, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(
+                        text = missionTitle,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
@@ -235,13 +244,15 @@ fun CurrentMissionCard(
                             .background(CompletedGreen.copy(alpha = 0.18f))
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
-                        Text(text = "ACTIVE", color = CompletedGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "ACTIVE", color = CompletedGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                     }
                 }
                 Text(
                     text = missionDescription,
                     color = TextMuted,
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 SegmentedProgress(

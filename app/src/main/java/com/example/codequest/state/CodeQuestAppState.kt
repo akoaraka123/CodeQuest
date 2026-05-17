@@ -1,5 +1,6 @@
 package com.example.codequest.state
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -9,7 +10,9 @@ import com.example.codequest.model.ActivityCompletionRecord
 import com.example.codequest.model.ActivityItem
 import com.example.codequest.model.ActivityType
 import com.example.codequest.model.fillInAnswerMatches
+import com.example.codequest.model.isMultiBlankCode
 import com.example.codequest.model.isTicLesson1MultipleChoice
+import com.example.codequest.model.multiBlankAnswersMatch
 import com.example.codequest.model.requiresMultipleChoice
 import com.example.codequest.model.CommandSequencePlayback
 import com.example.codequest.model.PlaybackStepResult
@@ -61,11 +64,144 @@ data class NotificationItem(
     val isUnread: Boolean
 )
 
+internal object CodeQuestPreferences {
+    private var appContext: Context? = null
+    const val PROGRESS_SCHEMA_VERSION = 3
+
+    fun install(context: Context) {
+        appContext = context.applicationContext
+    }
+
+    fun progressPrefs(currentUserId: String) =
+        requireNotNull(appContext) { "CodeQuestPreferences must be installed before app state is used." }
+            .getSharedPreferences(
+                "codequest_progress_${currentUserId.ifEmpty { "default" }}",
+                Context.MODE_PRIVATE
+            )
+}
+
 class CodeQuestAppState {
+    private val maxWrongAttempts = 3
+    private var currentUserId: String = ""
+
+    private fun prefs() = CodeQuestPreferences.progressPrefs(currentUserId)
+
+    private fun loadProgressFromPrefs() {
+        val p = prefs()
+        if (p.getInt("progressSchemaVersion", 0) != CodeQuestPreferences.PROGRESS_SCHEMA_VERSION) {
+            p.edit()
+                .clear()
+                .putInt("progressSchemaVersion", CodeQuestPreferences.PROGRESS_SCHEMA_VERSION)
+                .apply()
+            return
+        }
+        completedLessonIds = p.getStringSet("completedLessonIds", emptySet())?.toSet() ?: emptySet()
+        completedActivityIds = p.getStringSet("completedActivityIds", emptySet())?.toSet() ?: emptySet()
+        completedCourseIds = p.getStringSet("completedCourseIds", emptySet())?.toSet() ?: emptySet()
+        earnedBadgeIds = p.getStringSet("earnedBadgeIds", emptySet())?.toSet() ?: emptySet()
+        earnedAchievementIds = p.getStringSet("earnedAchievementIds", emptySet())?.toSet() ?: emptySet()
+        totalXP = p.getInt("totalXP", 0)
+        streakDays = p.getInt("streakDays", 0)
+        debugCorrectCount = p.getInt("debugCorrectCount", 0)
+        activeCourseId = p.getString("activeCourseId", "thinking-in-code") ?: "thinking-in-code"
+        ticL2RobotGuideSeen = p.getBoolean("ticL2RobotGuideSeen", false)
+        roleTitle = p.getString("roleTitle", "Junior Debugger") ?: "Junior Debugger"
+        selectedAvatar = p.getString("selectedAvatar", "Coder") ?: "Coder"
+        selectedTheme = p.getString("selectedTheme", "Cyber") ?: "Cyber"
+        hasSeenOnboarding = p.getBoolean("hasSeenOnboarding", false)
+
+        val badgeStr = p.getString("badgeProgress", "") ?: ""
+        badgeProgress = if (badgeStr.isEmpty()) {
+            mapOf("first-steps" to 0, "thinking-coder" to 0, "variable-starter" to 0,
+                "function-builder" to 0, "algorithm-explorer" to 0, "cs-rookie" to 0, "neural-beginner" to 0)
+        } else {
+            badgeStr.split(",").mapNotNull {
+                val parts = it.split("=")
+                if (parts.size == 2) parts[0] to (parts[1].toIntOrNull() ?: 0) else null
+            }.toMap()
+        }
+
+        val xpStr = p.getString("courseLearningXp", "") ?: ""
+        val xpLoaded = if (xpStr.isEmpty()) emptyMap() else xpStr.split(",").mapNotNull {
+            val parts = it.split("="); if (parts.size == 2) parts[0] to (parts[1].toIntOrNull() ?: 0) else null
+        }.toMap()
+        courseLearningXp = courseOrder.associate { it.id to 0 }.toMutableMap().also { it.putAll(xpLoaded) }
+
+        val countStr = p.getString("courseCompletedLessonCounts", "") ?: ""
+        val countLoaded = if (countStr.isEmpty()) emptyMap() else countStr.split(",").mapNotNull {
+            val parts = it.split("="); if (parts.size == 2) parts[0] to (parts[1].toIntOrNull() ?: 0) else null
+        }.toMap()
+        courseCompletedLessonCounts = courseOrder.associate { it.id to 0 }.toMutableMap().also { it.putAll(countLoaded) }
+
+        val recordStr = p.getString("activityCompletionRecords", "") ?: ""
+        activityCompletionRecords = if (recordStr.isBlank()) {
+            emptyMap()
+        } else {
+            recordStr.split(";").mapNotNull { token ->
+                val parts = token.split("|")
+                if (parts.size != 3) return@mapNotNull null
+                val id = parts[0]
+                val correct = parts[1].toBooleanStrictOrNull() ?: false
+                val exp = parts[2].toIntOrNull() ?: 0
+                id to ActivityCompletionRecord(id, correct, exp)
+            }.toMap()
+        }
+        syncExpTotalsFromCompletionRecords()
+    }
+
+    private fun saveProgress() {
+        if (currentUserId.isEmpty()) return
+        prefs().edit().apply {
+            putInt("progressSchemaVersion", CodeQuestPreferences.PROGRESS_SCHEMA_VERSION)
+            putStringSet("completedLessonIds", completedLessonIds)
+            putStringSet("completedActivityIds", completedActivityIds)
+            putStringSet("completedCourseIds", completedCourseIds)
+            putStringSet("earnedBadgeIds", earnedBadgeIds)
+            putStringSet("earnedAchievementIds", earnedAchievementIds)
+            putInt("totalXP", totalXP)
+            putInt("streakDays", streakDays)
+            putInt("debugCorrectCount", debugCorrectCount)
+            putString("activeCourseId", activeCourseId)
+            putBoolean("ticL2RobotGuideSeen", ticL2RobotGuideSeen)
+            putString("roleTitle", roleTitle)
+            putString("selectedAvatar", selectedAvatar)
+            putString("selectedTheme", selectedTheme)
+            putBoolean("hasSeenOnboarding", hasSeenOnboarding)
+            putString("badgeProgress", badgeProgress.entries.joinToString(",") { "${it.key}=${it.value}" })
+            putString("courseLearningXp", courseLearningXp.entries.joinToString(",") { "${it.key}=${it.value}" })
+            putString("courseCompletedLessonCounts", courseCompletedLessonCounts.entries.joinToString(",") { "${it.key}=${it.value}" })
+            putString(
+                "activityCompletionRecords",
+                activityCompletionRecords.values.joinToString(";") {
+                    "${it.activityId}|${it.correct}|${it.xpGranted}"
+                }
+            )
+            apply()
+        }
+    }
+
+    private fun syncExpTotalsFromCompletionRecords() {
+        totalXP = activityCompletionRecords.values.sumOf { record ->
+            if (record.correct) record.xpGranted else 0
+        }
+        courseLearningXp = courseOrder.associate { course ->
+            course.id to courseExp(course.id)
+        }.toMutableMap()
+    }
+
     var selectedTab by mutableStateOf(AppTab.HOME)
         private set
 
     var currentScreen by mutableStateOf(AppScreen.MAIN_TABS)
+        private set
+
+    var hasSeenOnboarding by mutableStateOf(false)
+        private set
+
+    var showOnboarding by mutableStateOf(false)
+        private set
+
+    var onboardingStepIndex by mutableStateOf(0)
         private set
 
     var selectedCourseId by mutableStateOf<String?>(null)
@@ -109,6 +245,12 @@ class CodeQuestAppState {
 
     /** Fill-in-the-blank activities: learner's typed answer. */
     var fillInAnswer by mutableStateOf("")
+        private set
+
+    var multiBlankAnswers by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    var currentBlankIndex by mutableIntStateOf(0)
         private set
 
     var isAnswerChecked by mutableStateOf(false)
@@ -163,6 +305,21 @@ class CodeQuestAppState {
     var lessonOneWrongAttempts by mutableIntStateOf(0)
         private set
 
+    var hasViewedCorrectAnswer by mutableStateOf(false)
+        private set
+
+    var isAnswerRevealed by mutableStateOf(false)
+        private set
+
+    var isActivityCompleted by mutableStateOf(false)
+        private set
+
+    var isActivityCorrect by mutableStateOf(false)
+        private set
+
+    var canRetry by mutableStateOf(true)
+        private set
+
     var sessionXpEarned by mutableIntStateOf(0)
         private set
 
@@ -198,7 +355,7 @@ class CodeQuestAppState {
             NotificationItem(
                 id = "n1",
                 title = "Daily Challenge Available",
-                message = "Solve today’s logic puzzle and earn bonus XP.",
+                message = "Solve today’s logic puzzle and earn bonus EXP.",
                 type = "Challenge",
                 timeText = "Just now",
                 icon = "\uD83C\uDFAF",
@@ -235,7 +392,7 @@ class CodeQuestAppState {
     )
         private set
 
-    private val courseOrder: List<Course> = LocalContentRepository.courses.sortedBy { it.order }
+    private val courseOrder: List<Course> = LocalContentRepository.visibleCourses
 
     var activeCourseId by mutableStateOf("thinking-in-code")
         private set
@@ -256,7 +413,7 @@ class CodeQuestAppState {
 
     /**
      * When true, the current activity is opened as read-only review (completed earlier).
-     * Editing, Check, and XP grants are disabled.
+     * Editing, Check, and EXP grants are disabled.
      */
     var lessonReviewMode by mutableStateOf(false)
         private set
@@ -289,14 +446,40 @@ class CodeQuestAppState {
         courseOrder.map { it.id }.toSet()
     }
 
-    fun isCourseUnlocked(courseId: String): Boolean =
-        demoModeEnabled || courseId in unlockedCourseIds
+    fun isCourseUnlocked(courseId: String): Boolean {
+        if (demoModeEnabled) return true
+        val idx = courseOrder.indexOfFirst { it.id == courseId }
+        if (idx < 0) return false
+        if (idx == 0) return true
+        return courseOrder[idx - 1].id in completedCourseIds
+    }
 
-    fun isLessonUnlocked(lessonId: String): Boolean =
-        demoModeEnabled || lessonId in unlockedLessonIds
+    fun isLessonUnlocked(lessonId: String): Boolean {
+        if (demoModeEnabled) return true
+        val course = courseOrder.firstOrNull { c -> c.lessons.any { it.id == lessonId } } ?: return false
+        if (!isCourseUnlocked(course.id)) return false
+        val sorted = course.lessons.sortedBy { it.order }
+        val idx = sorted.indexOfFirst { it.id == lessonId }
+        if (idx < 0) return false
+        if (idx == 0) return true
+        return sorted[idx - 1].id in completedLessonIds
+    }
 
-    fun effectiveUnlockedLessonIds(): Set<String> =
-        if (demoModeEnabled) allLessonIds else unlockedLessonIds
+    fun effectiveUnlockedLessonIds(): Set<String> {
+        if (demoModeEnabled) return allLessonIds
+        return courseOrder.flatMap { course ->
+            if (!isCourseUnlocked(course.id)) emptyList()
+            else {
+                val sorted = course.lessons.sortedBy { it.order }
+                buildList {
+                    for ((i, lesson) in sorted.withIndex()) {
+                        if (i == 0 || sorted[i - 1].id in completedLessonIds) add(lesson.id)
+                        else break
+                    }
+                }
+            }
+        }.toSet()
+    }
 
     fun applyDemoMode(enabled: Boolean) {
         demoModeEnabled = enabled
@@ -340,6 +523,32 @@ class CodeQuestAppState {
         currentScreen = AppScreen.MAIN_TABS
     }
 
+    fun startOnboardingGuide() {
+        selectedTab = AppTab.HOME
+        currentScreen = AppScreen.MAIN_TABS
+        onboardingStepIndex = 0
+        showOnboarding = true
+    }
+
+    fun nextOnboardingStep(totalSteps: Int) {
+        if (onboardingStepIndex >= totalSteps - 1) {
+            finishOnboarding()
+        } else {
+            onboardingStepIndex += 1
+        }
+    }
+
+    fun finishOnboarding() {
+        hasSeenOnboarding = true
+        showOnboarding = false
+        onboardingStepIndex = 0
+        saveProgress()
+    }
+
+    fun skipOnboarding() {
+        finishOnboarding()
+    }
+
     fun openNotifications() {
         previousTabBeforeNotifications = selectedTab
         currentScreen = AppScreen.NOTIFICATIONS
@@ -354,6 +563,20 @@ class CodeQuestAppState {
     fun hasUnreadNotifications(): Boolean = notifications.any { it.isUnread }
 
     fun getCourses(): List<Course> = courseOrder
+
+    fun visibleCompletedCourseCount(): Int =
+        completedCourseIds.count { completedId -> courseOrder.any { it.id == completedId } }
+
+    fun totalExp(): Int = totalXP
+
+    fun courseExp(courseId: String): Int = (courseLearningXp[courseId] ?: 0).coerceAtMost(500)
+
+    fun levelFromExp(): Int {
+        val exp = totalExp()
+        return if (exp == 0) 0 else (exp / 500) + 1
+    }
+
+    fun levelCurrentExp(): Int = totalExp() % 500
 
     fun getCourse(courseId: String): Course? = courseOrder.firstOrNull { it.id == courseId }
 
@@ -404,18 +627,23 @@ class CodeQuestAppState {
     }
 
     fun getActiveTargetLesson(): Lesson? {
-        val course = getCourse(activeCourseId) ?: return null
+        val course = getActiveCourseForHome() ?: return null
         val sorted = course.lessons.sortedBy { it.order }
         return sorted.firstOrNull { lid ->
             lid.id !in completedLessonIds && isLessonUnlocked(lid.id)
         }
     }
 
-    fun getActiveCourseForHome(): Course? = getCourse(activeCourseId)
+    fun getActiveCourseForHome(): Course? =
+        courseOrder.firstOrNull { isCourseUnlocked(it.id) && it.id !in completedCourseIds }
+            ?: courseOrder.lastOrNull { isCourseUnlocked(it.id) }
 
     fun ensureDefaultActiveCourse() {
-        if (getCourse(activeCourseId) == null) {
-            activeCourseId = "thinking-in-code"
+        val active = getCourse(activeCourseId)
+        if (active == null || active.id in completedCourseIds) {
+            activeCourseId = courseOrder.firstOrNull {
+                isCourseUnlocked(it.id) && it.id !in completedCourseIds
+            }?.id ?: "thinking-in-code"
         }
     }
 
@@ -469,6 +697,7 @@ class CodeQuestAppState {
         robotDemoGuideStep = 0
         lessonInteractionState = LessonInteractionState.ACTIVITY
         initCommandSlots()
+        saveProgress()
     }
 
     fun robotDemoGuideStepCount(): Int = 6
@@ -592,21 +821,68 @@ class CodeQuestAppState {
 
     fun selectMcOption(answerIndex: Int) {
         if (lessonReviewMode) return
+        if (!canRetry || isActivityCompleted || isAnswerRevealed) return
         pendingSubmittedIndex = answerIndex
     }
 
     fun updateFillInAnswer(value: String) {
         if (lessonReviewMode) return
+        if (!canRetry || isActivityCompleted || isAnswerRevealed) return
         fillInAnswer = value
     }
 
+    fun currentMultiBlankChoices(): List<String> {
+        val a = getCurrentActivity() ?: return emptyList()
+        return a.codeBlanks.getOrNull(currentBlankIndex)?.choices.orEmpty()
+    }
+
+    fun currentMultiBlankLabel(): String {
+        val a = getCurrentActivity() ?: return "Choose the answer"
+        if (!a.isMultiBlankCode()) return "Choose the answer"
+        return "Blank ${currentBlankIndex + 1} of ${a.codeBlanks.size}"
+    }
+
+    fun selectMultiBlankChoice(choice: String) {
+        if (lessonReviewMode) return
+        if (!canRetry || isActivityCompleted || isAnswerRevealed) return
+        val a = getCurrentActivity() ?: return
+        if (!a.isMultiBlankCode()) return
+        val size = a.codeBlanks.size
+        if (size == 0) return
+        val safeIndex = currentBlankIndex.coerceIn(0, size - 1)
+        multiBlankAnswers = List(size) { index ->
+            if (index == safeIndex) choice else multiBlankAnswers.getOrNull(index).orEmpty()
+        }
+        fillInAnswer = multiBlankAnswers.joinToString(" | ")
+        // No auto-advance — user navigates blanks explicitly with Next/Back
+    }
+
+    fun navigateBlankForward() {
+        val a = getCurrentActivity() ?: return
+        if (!a.isMultiBlankCode()) return
+        if (currentBlankIndex < a.codeBlanks.size - 1) {
+            currentBlankIndex += 1
+        }
+    }
+
+    fun navigateBlankBack() {
+        if (currentBlankIndex > 0) {
+            currentBlankIndex -= 1
+        }
+    }
+
     fun activityReadyForCheck(): Boolean {
+        if (isActivityCompleted || isAnswerRevealed) return false
         val a = getCurrentActivity() ?: return false
         return when (a.type) {
             ActivityType.COMMAND_SEQUENCE ->
                 activityCommandSlots.isNotEmpty() && activityCommandSlots.all { it != null }
             ActivityType.FILL_IN_BLANK ->
-                fillInAnswer.isNotBlank()
+                if (a.isMultiBlankCode()) {
+                    multiBlankAnswers.size == a.codeBlanks.size && multiBlankAnswers.all { it.isNotBlank() }
+                } else {
+                    fillInAnswer.isNotBlank()
+                }
             else -> pendingSubmittedIndex >= 0 && a.correctAnswerIndex >= 0
         }
     }
@@ -617,7 +893,15 @@ class CodeQuestAppState {
         pendingAnswerCorrect = false
         pendingSubmittedIndex = -1
         fillInAnswer = ""
+        val current = getCurrentActivity()
+        multiBlankAnswers = List(current?.codeBlanks?.size ?: 0) { "" }
+        currentBlankIndex = 0
         isAnswerChecked = false
+        hasViewedCorrectAnswer = false
+        isAnswerRevealed = false
+        isActivityCompleted = false
+        isActivityCorrect = false
+        canRetry = true
         commandPlaybackCommandsSnapshot = emptyList()
         commandPlaybackUsesReferenceSolution = false
         commandPlaybackResults = emptyList()
@@ -630,16 +914,6 @@ class CodeQuestAppState {
     fun submitActivityCheck() {
         if (lessonReviewMode) return
         val a = getCurrentActivity() ?: return
-        if (a.isTicLesson1MultipleChoice()) {
-            isAnswerChecked = true
-            val correct = pendingSubmittedIndex >= 0 && pendingSubmittedIndex == a.correctAnswerIndex
-            pendingAnswerCorrect = correct
-            if (!correct) {
-                lessonOneWrongAttempts += 1
-            }
-            lessonInteractionState = LessonInteractionState.FEEDBACK
-            return
-        }
         isAnswerChecked = true
         pendingAnswerCorrect = when (a.type) {
             ActivityType.COMMAND_SEQUENCE ->
@@ -648,7 +922,7 @@ class CodeQuestAppState {
                     activityCommandSlots
                 )
             ActivityType.FILL_IN_BLANK ->
-                a.fillInAnswerMatches(fillInAnswer)
+                if (a.isMultiBlankCode()) a.multiBlankAnswersMatch(multiBlankAnswers) else a.fillInAnswerMatches(fillInAnswer)
             ActivityType.MULTIPLE_CHOICE,
             ActivityType.OUTPUT_TRACING,
             ActivityType.DEBUG_CODE ->
@@ -659,8 +933,21 @@ class CodeQuestAppState {
             showProcessRevealFromFeedback()
             return
         }
+        if (!pendingAnswerCorrect) {
+            lessonOneWrongAttempts += 1
+            canRetry = !wrongAttemptsDepleted()
+        } else {
+            isActivityCorrect = true
+            canRetry = false
+        }
         lessonInteractionState = LessonInteractionState.FEEDBACK
     }
+
+    fun attemptsRemaining(): Int =
+        (maxWrongAttempts - lessonOneWrongAttempts).coerceAtLeast(0)
+
+    fun wrongAttemptsDepleted(): Boolean =
+        lessonOneWrongAttempts >= maxWrongAttempts
 
     fun showProcessRevealFromFeedback() {
         if (lessonReviewMode) return
@@ -721,15 +1008,35 @@ class CodeQuestAppState {
 
     fun lesson1TryAgainAfterWrong() {
         if (lessonReviewMode) return
+        if (!canRetry || isAnswerRevealed || isActivityCompleted) return
+        val a = getCurrentActivity()
         lessonInteractionState = LessonInteractionState.ACTIVITY
         pendingSubmittedIndex = -1
-        fillInAnswer = ""
         pendingAnswerCorrect = false
         isAnswerChecked = false
+        currentBlankIndex = 0
+        if (a?.isMultiBlankCode() == true) {
+            // Keep existing answers so the user can review and edit individual blanks
+        } else {
+            fillInAnswer = ""
+            multiBlankAnswers = List(a?.codeBlanks?.size ?: 0) { "" }
+        }
     }
 
     fun lesson1OpenCorrectAnswerReveal() {
+        if (lessonReviewMode || pendingAnswerCorrect || !isAnswerChecked) return
+        hasViewedCorrectAnswer = true
+        isAnswerRevealed = true
+        canRetry = false
+        markCurrentActivityCompletedIncorrect()
         lessonInteractionState = LessonInteractionState.LESSON1_ANSWER_REVEAL
+    }
+
+    fun skipCurrentActivityAfterWrong() {
+        if (lessonReviewMode || pendingAnswerCorrect || !isAnswerChecked) return
+        canRetry = false
+        markCurrentActivityCompletedIncorrect()
+        moveToNextLessonActivityOrCompleteBonus()
     }
 
     fun lesson1ProceedAfterCorrectFeedback() {
@@ -738,7 +1045,7 @@ class CodeQuestAppState {
         moveToNextLessonActivityOrCompleteBonus()
     }
 
-    /** After viewing the correct answer (no XP for failed attempt). */
+    /** After viewing the correct answer (no EXP for failed attempt). */
     fun lesson1ProceedAfterRevealExplanation() {
         if (lessonReviewMode) return
         moveToNextLessonActivityOrCompleteBonus()
@@ -762,7 +1069,10 @@ class CodeQuestAppState {
             correct = true,
             xpGranted = a.xpReward,
             selectedMcIndex = if (a.requiresMultipleChoice()) pendingSubmittedIndex.takeIf { it >= 0 } else null,
-            fillInAnswer = if (a.type == ActivityType.FILL_IN_BLANK) fillInAnswer.takeIf { it.isNotBlank() } else null,
+            fillInAnswer = if (a.type == ActivityType.FILL_IN_BLANK) {
+                if (a.isMultiBlankCode()) multiBlankAnswers.joinToString(" | ").takeIf { it.isNotBlank() }
+                else fillInAnswer.takeIf { it.isNotBlank() }
+            } else null,
             commandTokens = if (a.type == ActivityType.COMMAND_SEQUENCE) {
                 activityCommandSlots.mapNotNull { it }
             } else {
@@ -770,6 +1080,31 @@ class CodeQuestAppState {
             },
             playbackSummary = playbackSummary
         )
+    }
+
+    private fun buildIncorrectCompletionRecord(a: ActivityItem): ActivityCompletionRecord =
+        ActivityCompletionRecord(
+            activityId = a.id,
+            correct = false,
+            xpGranted = 0,
+            selectedMcIndex = if (a.requiresMultipleChoice()) pendingSubmittedIndex.takeIf { it >= 0 } else null,
+            fillInAnswer = if (a.type == ActivityType.FILL_IN_BLANK) {
+                if (a.isMultiBlankCode()) multiBlankAnswers.joinToString(" | ").takeIf { it.isNotBlank() }
+                else fillInAnswer.takeIf { it.isNotBlank() }
+            } else null
+        )
+
+    private fun markCurrentActivityCompletedIncorrect() {
+        val a = getCurrentActivity() ?: return
+        if (a.type == ActivityType.COMMAND_SEQUENCE) return
+        if (a.id in completedActivityIds && !demoModeEnabled) return
+
+        activityCompletionRecords = activityCompletionRecords + (a.id to buildIncorrectCompletionRecord(a))
+        completedActivityIds = completedActivityIds + a.id
+        isActivityCompleted = true
+        isActivityCorrect = false
+        syncExpTotalsFromCompletionRecords()
+        saveProgress()
     }
 
     private fun grantPendingCorrectActivityXpIfApplicable() {
@@ -781,15 +1116,17 @@ class CodeQuestAppState {
         activityCompletionRecords = activityCompletionRecords + (a.id to record)
 
         completedActivityIds = completedActivityIds + a.id
+        isActivityCompleted = true
+        isActivityCorrect = true
+        canRetry = false
         sessionXpEarned += a.xpReward
-        totalXP += a.xpReward
-        val cid = selectedCourseId ?: ""
-        courseLearningXp[cid] = ((courseLearningXp[cid] ?: 0) + a.xpReward).coerceAtMost(500)
+        syncExpTotalsFromCompletionRecords()
         lessonCorrectThisSession += 1
         if (a.type == ActivityType.DEBUG_CODE) {
             debugCorrectCount += 1
         }
         checkAchievementsAfterActivity(a)
+        saveProgress()
     }
 
     private fun moveToNextLessonActivityOrCompleteBonus() {
@@ -803,10 +1140,7 @@ class CodeQuestAppState {
         }
         val lesson = getSelectedLesson() ?: return
         val course = getSelectedCourse() ?: return
-        val bonusXp = 35
-        sessionXpEarned += bonusXp
-        totalXP += bonusXp
-        courseLearningXp[course.id] = ((courseLearningXp[course.id] ?: 0) + bonusXp).coerceAtMost(500)
+        syncExpTotalsFromCompletionRecords()
         applyLessonCompletionRewards(
             lesson = lesson,
             course = course,
@@ -817,6 +1151,7 @@ class CodeQuestAppState {
 
     fun retryCurrentActivity() {
         if (lessonReviewMode) return
+        if (!canRetry || isAnswerRevealed || isActivityCompleted) return
         resetInteractionForActivity()
         lessonInteractionState = LessonInteractionState.ACTIVITY
     }
@@ -847,7 +1182,7 @@ class CodeQuestAppState {
     }
 
     /**
-     * Opens a finished activity in read-only review (playback / chosen answers). No XP.
+     * Opens a finished activity in read-only review (playback / chosen answers). No EXP.
      */
     fun openCompletedActivityReview(courseId: String, lessonId: String, activityIndex: Int): Boolean {
         val lesson = LocalContentRepository.lessonById(lessonId) ?: return false
@@ -863,6 +1198,11 @@ class CodeQuestAppState {
         courseDetailFocusLessonId = lessonId
         currentActivityIndex = activityIndex
         lessonReviewMode = true
+        hasViewedCorrectAnswer = !record.correct
+        isAnswerRevealed = !record.correct
+        isActivityCompleted = true
+        isActivityCorrect = record.correct
+        canRetry = false
         lessonOneWrongAttempts = 0
         sessionXpEarned = 0
         lessonCorrectThisSession = 0
@@ -883,6 +1223,13 @@ class CodeQuestAppState {
             }
             ActivityType.FILL_IN_BLANK -> {
                 fillInAnswer = record.fillInAnswer.orEmpty()
+                multiBlankAnswers = if (act.isMultiBlankCode()) {
+                    val parts = fillInAnswer.split(" | ")
+                    List(act.codeBlanks.size) { index -> parts.getOrNull(index).orEmpty() }
+                } else {
+                    emptyList()
+                }
+                currentBlankIndex = 0
                 pendingAnswerCorrect = record.correct
                 isAnswerChecked = true
                 lessonInteractionState = LessonInteractionState.FEEDBACK
@@ -931,6 +1278,7 @@ class CodeQuestAppState {
             totalActivities = totalActivities,
             xpEarned = sessionXpEarned
         )
+        saveProgress()
         currentScreen = AppScreen.RESULT
     }
 
@@ -975,8 +1323,13 @@ class CodeQuestAppState {
     }
 
     fun continueLearning() {
-        ensureDefaultActiveCourse()
-        openCourseDetail(activeCourseId)
+        val target = getActiveCourseForHome()
+        if (target != null) {
+            openCourseDetail(target.id)
+        } else {
+            ensureDefaultActiveCourse()
+            openCourseDetail(activeCourseId)
+        }
     }
 
     fun backFromLessonActivity() {
@@ -1139,6 +1492,82 @@ class CodeQuestAppState {
         ) {
             grantAchievementIfNew("thinking-coder")
         }
+        if ("tic-l1" in completedLessonIds) {
+            grantAchievementIfNew("program-reader")
+        }
+        // Programming with Variables – per-lesson achievements
+        if ("pvar-l1" in completedLessonIds) {
+            grantAchievementIfNew("pvar-lesson1")
+        }
+        if ("pvar-l2" in completedLessonIds) {
+            grantAchievementIfNew("naming-pro")
+        }
+        if ("pvar-l3" in completedLessonIds) {
+            grantAchievementIfNew("type-detective")
+        }
+        if ("pvar-l4" in completedLessonIds) {
+            grantAchievementIfNew("value-updater")
+        }
+        if (course.id == "programming-variables" &&
+            course.lessons.all { it.id in completedLessonIds }
+        ) {
+            grantAchievementIfNew("variable-master")
+        }
+        if ("tp-l1" in completedLessonIds) {
+            grantAchievementIfNew("python-printer")
+        }
+        if ("tp-l2" in completedLessonIds) {
+            grantAchievementIfNew("order-reader")
+        }
+        if ("tp-l3" in completedLessonIds) {
+            grantAchievementIfNew("comment-helper")
+        }
+        if ("tp-l4" in completedLessonIds) {
+            grantAchievementIfNew("error-fixer")
+        }
+        if (course.id == "thinking-python" &&
+            course.lessons.all { it.id in completedLessonIds }
+        ) {
+            grantAchievementIfNew("python-thinker")
+        }
+        if ("pio-l1" in completedLessonIds) {
+            grantAchievementIfNew("output-beginner")
+        }
+        if ("pio-l2" in completedLessonIds) {
+            grantAchievementIfNew("print-master")
+        }
+        if ("pio-l3" in completedLessonIds) {
+            grantAchievementIfNew("input-explorer")
+        }
+        if ("pio-l4" in completedLessonIds) {
+            grantAchievementIfNew("ipo-learner")
+        }
+        if (course.id == "python-input-output" &&
+            course.lessons.all { it.id in completedLessonIds }
+        ) {
+            grantAchievementIfNew("input-output-champion")
+        }
+        if ("pc-l1" in completedLessonIds) {
+            grantAchievementIfNew("condition-beginner")
+        }
+        if ("pc-l2" in completedLessonIds) {
+            grantAchievementIfNew("if-starter")
+        }
+        if ("pc-l3" in completedLessonIds) {
+            grantAchievementIfNew("else-explorer")
+        }
+        if ("pc-l4" in completedLessonIds) {
+            grantAchievementIfNew("compare-coder")
+        }
+        if (course.id == "python-conditions" &&
+            course.lessons.all { it.id in completedLessonIds }
+        ) {
+            grantAchievementIfNew("condition-master")
+        }
+        val visibleCourseIds = getCourses().map { it.id }.toSet()
+        if (visibleCourseIds.all { it in completedCourseIds }) {
+            grantAchievementIfNew("python-path-finisher")
+        }
     }
 
     private fun updateBadges() {
@@ -1237,11 +1666,13 @@ class CodeQuestAppState {
         username = newUsername.ifBlank { "Coder!" }
         roleTitle = newRoleTitle.ifBlank { "Junior Debugger" }
         selectedAvatar = avatar
+        saveProgress()
         backToProfileFromSettings()
     }
 
     fun setTheme(theme: String) {
         selectedTheme = theme
+        saveProgress()
     }
 
     fun setDailyReminder(enabled: Boolean) {
@@ -1263,7 +1694,13 @@ class CodeQuestAppState {
 
     fun applyStudentSession(user: AppUser) {
         resetStudentPlayProgress()
+        currentUserId = user.id
+        loadProgressFromPrefs()
         username = user.fullName.ifBlank { "Coder!" }
+        selectedTab = AppTab.HOME
+        currentScreen = AppScreen.MAIN_TABS
+        showOnboarding = !hasSeenOnboarding
+        onboardingStepIndex = 0
     }
 
     fun resetSessionIdentity() {
@@ -1273,7 +1710,7 @@ class CodeQuestAppState {
 
     /**
      * Clears session progress so a newly logged-in student starts like a fresh install:
-     * no XP, no streak, first lesson unlocked only, no completed lessons/badges.
+     * no EXP, no streak, first lesson unlocked only, no completed lessons/badges.
      */
     fun resetStudentPlayProgress() {
         selectedTab = AppTab.HOME
@@ -1290,6 +1727,11 @@ class CodeQuestAppState {
         pendingSubmittedIndex = -1
         fillInAnswer = ""
         isAnswerChecked = false
+        hasViewedCorrectAnswer = false
+        isAnswerRevealed = false
+        isActivityCompleted = false
+        isActivityCorrect = false
+        canRetry = true
         activityCommandSlots = emptyList()
         commandPlaybackCommandsSnapshot = emptyList()
         commandPlaybackUsesReferenceSolution = false
@@ -1302,9 +1744,12 @@ class CodeQuestAppState {
         debugCorrectCount = 0
         lessonCorrectThisSession = 0
         lessonOneWrongAttempts = 0
+        hasViewedCorrectAnswer = false
         sessionXpEarned = 0
         result = null
         previousTabBeforeNotifications = null
+        showOnboarding = false
+        onboardingStepIndex = 0
         activeCourseId = "thinking-in-code"
         completedLessonIds = emptySet()
         completedActivityIds = emptySet()
@@ -1331,5 +1776,13 @@ class CodeQuestAppState {
         )
         courseLearningXp = courseOrder.associate { it.id to 0 }.toMutableMap()
         courseCompletedLessonCounts = courseOrder.associate { it.id to 0 }.toMutableMap()
+    }
+
+    fun resetAllProgressForDebug() {
+        val uid = currentUserId
+        resetStudentPlayProgress()
+        if (uid.isNotEmpty()) {
+            CodeQuestPreferences.progressPrefs(uid).edit().clear().apply()
+        }
     }
 }

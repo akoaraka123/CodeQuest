@@ -4,6 +4,7 @@ import com.example.codequest.model.Achievement
 import com.example.codequest.model.ActivityItem
 import com.example.codequest.model.ActivityType
 import com.example.codequest.model.Badge
+import com.example.codequest.model.CodeBlank
 import com.example.codequest.model.CommandBoardSetup
 import com.example.codequest.model.Direction
 import com.example.codequest.model.GridPosition
@@ -32,14 +33,26 @@ object LocalContentRepository {
     )
 
     val courses: List<Course> = listOf(
-        courseThinkingInCode(),
-        courseProgrammingWithVariables(),
-        courseThinkingInPython(),
-        courseProgrammingWithFunctions(),
-        courseAlgorithmicThinking(),
-        courseCsFundamentals(),
-        courseNeuralNetworks()
+        courseThinkingInCode().copy(title = "Thinking in Python"),
+        courseProgrammingWithVariables().copy(title = "Python Variables"),
+        coursePythonInputOutput(),
+        coursePythonConditions(),
+        courseThinkingInPython().copy(order = 100),
+        courseProgrammingWithFunctions().copy(order = 101),
+        courseAlgorithmicThinking().copy(order = 102),
+        courseCsFundamentals().copy(order = 103),
+        courseNeuralNetworks().copy(order = 104)
     )
+
+    private val visibleCourseIds = setOf(
+        "thinking-in-code",
+        "programming-variables",
+        "python-input-output",
+        "python-conditions"
+    )
+
+    val visibleCourses: List<Course> =
+        courses.filter { it.id in visibleCourseIds }.sortedBy { it.order }
 
     val achievements: List<Achievement> = listOf(
         Achievement(
@@ -67,10 +80,142 @@ object LocalContentRepository {
             icon = "🐛"
         ),
         Achievement(
+            id = "program-reader",
+            title = "Program Reader",
+            description = "Complete all 5 questions in What is a Program?",
+            icon = "📖"
+        ),
+        Achievement(
             id = "thinking-coder",
             title = "Thinking Coder",
             description = "Finish the Thinking in Code course.",
             icon = "💡"
+        ),
+        Achievement(
+            id = "pvar-lesson1",
+            title = "Variable Starter",
+            description = "Complete What is a Variable? in Programming with Variables.",
+            icon = "📦"
+        ),
+        Achievement(
+            id = "naming-pro",
+            title = "Naming Pro",
+            description = "Complete Naming Variables in Programming with Variables.",
+            icon = "🏷️"
+        ),
+        Achievement(
+            id = "type-detective",
+            title = "Type Detective",
+            description = "Complete Data Types in Programming with Variables.",
+            icon = "🔍"
+        ),
+        Achievement(
+            id = "value-updater",
+            title = "Value Updater",
+            description = "Complete Updating Values in Programming with Variables.",
+            icon = "🔄"
+        ),
+        Achievement(
+            id = "variable-master",
+            title = "Variable Master",
+            description = "Complete the full Programming with Variables course.",
+            icon = "🏆"
+        ),
+        Achievement(
+            id = "python-printer",
+            title = "Python Printer",
+            description = "Complete Python Prints Output.",
+            icon = "🖨️"
+        ),
+        Achievement(
+            id = "order-reader",
+            title = "Order Reader",
+            description = "Complete Reading Code in Order.",
+            icon = "📚"
+        ),
+        Achievement(
+            id = "comment-helper",
+            title = "Comment Helper",
+            description = "Complete Comments and Clear Code.",
+            icon = "💬"
+        ),
+        Achievement(
+            id = "error-fixer",
+            title = "Error Fixer",
+            description = "Complete Simple Python Errors.",
+            icon = "🛠️"
+        ),
+        Achievement(
+            id = "python-thinker",
+            title = "Python Thinker",
+            description = "Complete the full Thinking in Python course.",
+            icon = "🐍"
+        ),
+        Achievement(
+            id = "output-beginner",
+            title = "Output Beginner",
+            description = "Complete What is Output?",
+            icon = "📤"
+        ),
+        Achievement(
+            id = "print-master",
+            title = "Print Master",
+            description = "Complete Using print().",
+            icon = "🖨️"
+        ),
+        Achievement(
+            id = "input-explorer",
+            title = "Input Explorer",
+            description = "Complete What is Input?",
+            icon = "📥"
+        ),
+        Achievement(
+            id = "ipo-learner",
+            title = "IPO Learner",
+            description = "Complete Combining Input and Output.",
+            icon = "🔁"
+        ),
+        Achievement(
+            id = "input-output-champion",
+            title = "Input Output Champion",
+            description = "Complete the full Python Input and Output challenge.",
+            icon = "🏆"
+        ),
+        Achievement(
+            id = "condition-beginner",
+            title = "Condition Beginner",
+            description = "Complete What is a Condition?",
+            icon = "✅"
+        ),
+        Achievement(
+            id = "if-starter",
+            title = "If Starter",
+            description = "Complete Using if Statements.",
+            icon = "🔎"
+        ),
+        Achievement(
+            id = "else-explorer",
+            title = "Else Explorer",
+            description = "Complete Using else.",
+            icon = "🔀"
+        ),
+        Achievement(
+            id = "compare-coder",
+            title = "Compare Coder",
+            description = "Complete Comparing Values.",
+            icon = "⚖️"
+        ),
+        Achievement(
+            id = "condition-master",
+            title = "Condition Master",
+            description = "Complete the full Python Conditions challenge.",
+            icon = "🏅"
+        ),
+        Achievement(
+            id = "python-path-finisher",
+            title = "Python Path Finisher",
+            description = "Complete all 4 Python challenges.",
+            icon = "🎓"
         )
     )
 
@@ -104,7 +249,7 @@ object LocalContentRepository {
     fun courseIdForLesson(lessonId: String): String? = lessonById(lessonId)?.courseId
 
     fun nextCourseAfter(courseId: String): Course? {
-        val ordered = courses.sortedBy { it.order }
+        val ordered = visibleCourses
         val idx = ordered.indexOfFirst { it.id == courseId }
         if (idx == -1 || idx >= ordered.lastIndex) return null
         return ordered[idx + 1]
@@ -963,6 +1108,7 @@ object LocalContentRepository {
                         prompt = "This program should print PASS when score is 60. Fill in the correct comparison on line 2.",
                         difficultyLabel = "Python debug · fill in",
                         codeSnippet = "score = 60\nif score ___ 60:\n    print(\"PASS\")\nelse:\n    print(\"REVIEW\")",
+                        options = listOf(">", ">=", "==", "<="),
                         fillInPlaceholder = "Type the comparison (e.g. >=)",
                         fillInAcceptedAnswers = listOf(
                             ">=",
@@ -999,6 +1145,7 @@ object LocalContentRepository {
                         prompt = "This program should print 20. Fill in the correct update on line 2.",
                         difficultyLabel = "Python debug · fill in",
                         codeSnippet = "total = 10\ntotal = total + ___\nprint(total)",
+                        options = listOf("5", "10", "15", "20"),
                         fillInPlaceholder = "Type what to add (e.g. 10)",
                         fillInAcceptedAnswers = listOf(
                             "10",
@@ -1022,8 +1169,11 @@ object LocalContentRepository {
                         prompt = "Line 2 should match line 1 so Hi prints twice. Fill in the corrected second print.",
                         difficultyLabel = "Python debug · fill in",
                         codeSnippet = "print(\"Hi\")\nprint(___)",
+                        options = listOf("\"Hi\"", "'Hi'", "Hi", "\"hi\""),
                         fillInPlaceholder = "Type the fixed print(...) line",
                         fillInAcceptedAnswers = listOf(
+                            "\"Hi\"",
+                            "'Hi'",
                             "print(\"Hi\")",
                             "print('Hi')"
                         ),
@@ -1044,6 +1194,7 @@ object LocalContentRepository {
                         prompt = "This program should print even when n is 4. Fill in the correct operator on line 2.",
                         difficultyLabel = "Python debug · fill in",
                         codeSnippet = "n = 4\nif n % 2 ___ 0:\n    print(\"even\")\nelse:\n    print(\"odd\")",
+                        options = listOf("=", "==", "!=", ">="),
                         fillInPlaceholder = "Type the comparison operator",
                         fillInAcceptedAnswers = listOf(
                             "==",
@@ -1079,6 +1230,7 @@ object LocalContentRepository {
                         prompt = "This program should print Ada. Fill in the correct variable name on line 2.",
                         difficultyLabel = "Python debug · fill in",
                         codeSnippet = "name = \"Ada\"\nprint(___)",
+                        options = listOf("name", "\"Ada\"", "Name", "n"),
                         fillInPlaceholder = "Type what goes inside print(...)",
                         fillInAcceptedAnswers = listOf(
                             "name",
@@ -1114,126 +1266,818 @@ object LocalContentRepository {
     private fun courseProgrammingWithVariables(): Course = Course(
         id = "programming-variables",
         title = "Programming with Variables",
-        description = "Understand how data is stored, named, and reused.",
+        description = "Learn how Python stores, names, reads, and updates values using variables.",
         order = 1,
         icon = "📦",
         lessons = listOf(
+
+            // ── Lesson 1: What is a Variable? ────────────────────────────────────────
             Lesson(
                 id = "pvar-l1",
                 courseId = "programming-variables",
                 title = "What is a Variable?",
-                description = "A named box that holds a value you can reuse.",
-                content = "A variable stores a value under a name so you can read or update it later.",
+                description = "Learn how Python stores values using names.",
+                content = "A variable is a name for a value. In Python, age = 18 means the name age stores the value 18. Then print(age) shows the stored value.",
                 order = 0,
-                example = "score = 0 then score = score + 10 after a correct answer.",
+                example = "age = 18  →  Python remembers 18 under the name age.",
+                pathCardSubtitle = "Learn what a variable is and how to use one.",
                 activities = listOf(
+                    // Q1 – MC: what is a variable?
                     ActivityItem(
                         id = "pvar-l1-a1",
                         lessonId = "pvar-l1",
-                        type = ActivityType.OUTPUT_TRACING,
-                        prompt = "What will be printed?",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "What is a variable in Python?",
                         difficultyLabel = "Core concept",
-                        codeSnippet = "coins = 3\ncoins = coins + 2\nprint(coins)",
-                        options = listOf("3", "2", "5", "32"),
-                        correctAnswerIndex = 2,
-                        correctFeedback = "Correct. The variable updates to 5.",
-                        incorrectFeedback = "Track how coins changes line by line.",
-                        processSteps = listOf(
-                            ProcessStep(stepNumber = 1, title = "Initial value", explanation = "coins starts at 3."),
-                            ProcessStep(stepNumber = 2, title = "Update", explanation = "coins + 2 gives 5, then coins becomes 5."),
-                            ProcessStep(stepNumber = 3, title = "Print", explanation = "print(coins) shows 5.")
+                        codeSnippet = "age = 18\nprint(age)",
+                        options = listOf(
+                            "A name that stores a value",
+                            "A button on the keyboard",
+                            "A type of screen",
+                            "A picture in the app"
                         ),
-                        finalResult = "The output is 5.",
-                        finalOutput = "5"
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! age is the variable name, and it stores the value 18.",
+                        incorrectFeedback = "Not quite. In Python, a variable is a name that stores a value.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "What a variable does",
+                                explanation = "A variable gives a name to a value, like age for 18."),
+                            ProcessStep(stepNumber = 2, title = "How it looks in Python",
+                                explanation = "score = 10 means the name score stores the value 10.",
+                                codeBlock = "score = 10"),
+                            ProcessStep(stepNumber = 3, title = "Why it matters",
+                                explanation = "After a value has a name, you can use that name again.")
+                        ),
+                        finalResult = "A variable is a name that stores a value.",
+                        xpReward = 25
+                    ),
+                    // Q2 – OUTPUT_TRACING: print(name)
+                    ActivityItem(
+                        id = "pvar-l1-a2",
+                        lessonId = "pvar-l1",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What will this code print?",
+                        difficultyLabel = "Tracing output",
+                        codeSnippet = "name = \"Ada\"\nprint(name)",
+                        options = listOf("name", "Ada", "print", "Error"),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct! name stores Ada, so print(name) displays Ada.",
+                        incorrectFeedback = "Not quite. print(name) shows the value stored inside name.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Store the value",
+                                explanation = "name = \"Ada\" means the name variable stores the text Ada.",
+                                codeBlock = "name = \"Ada\""),
+                            ProcessStep(stepNumber = 2, title = "Print the variable",
+                                explanation = "print(name) shows the value stored in name.",
+                                highlightedCommand = "print(name)", miniVisualHint = "→ Ada"),
+                            ProcessStep(stepNumber = 3, title = "Confirm the output",
+                                explanation = "The screen shows Ada, not the word name.",
+                                miniVisualHint = "Ada")
+                        ),
+                        finalResult = "The output is Ada.",
+                        finalOutput = "Ada",
+                        xpReward = 25
+                    ),
+                    // Q3 – FILL_IN_BLANK: print(age)
+                    ActivityItem(
+                        id = "pvar-l1-a3",
+                        lessonId = "pvar-l1",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank to print the value of age.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "age = 18\nprint(___)",
+                        options = listOf("age", "\"age\"", "Age", "18age"),
+                        fillInAcceptedAnswers = listOf("age"),
+                        correctFeedback = "Correct! age stores 18, so print(age) displays 18.",
+                        incorrectFeedback = "Not quite. Python needs the exact variable name age. Variable names are case-sensitive.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Identify the variable",
+                                explanation = "age = 18 stores 18 under the name age.",
+                                codeBlock = "age = 18"),
+                            ProcessStep(stepNumber = 2, title = "Use the variable name",
+                                explanation = "To show the stored value, put the variable name inside print(...).",
+                                highlightedCommand = "print(age)"),
+                            ProcessStep(stepNumber = 3, title = "Why not the others?",
+                                explanation = "\"age\" is text, not the variable. Age is different from age. 18age cannot be a Python variable name.")
+                        ),
+                        finalResult = "print(age) outputs 18.",
+                        finalOutput = "18",
+                        xpReward = 25
+                    ),
+                    // Q4 – MC: storing a value
+                    ActivityItem(
+                        id = "pvar-l1-a4",
+                        lessonId = "pvar-l1",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "In Python, which line correctly stores the number 10 in a variable named score?",
+                        difficultyLabel = "Syntax check",
+                        codeSnippet = "variable_name = value",
+                        options = listOf(
+                            "score = 10",
+                            "10 = score",
+                            "score == 10",
+                            "print = score 10"
+                        ),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! In Python, the variable name goes on the left, then =, then the value goes on the right.",
+                        incorrectFeedback = "Not quite. To store a value in Python, write the variable name first, then =, then the value.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Store a value",
+                                explanation = "Python stores values like this: variable_name = value.",
+                                codeBlock = "score = 10"),
+                            ProcessStep(stepNumber = 2, title = "Common mistakes",
+                                explanation = "10 = score is backwards. score == 10 asks a question instead of storing a value."),
+                            ProcessStep(stepNumber = 3, title = "Confirm",
+                                explanation = "score = 10 creates a variable named score and stores the number 10.")
+                        ),
+                        finalResult = "score = 10 correctly stores 10 in the variable score.",
+                        xpReward = 25
+                    ),
+                    // Q5 – FILL_IN_BLANK: print(city)
+                    ActivityItem(
+                        id = "pvar-l1-a5",
+                        lessonId = "pvar-l1",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank to display the city.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "city = \"Gensan\"\nprint(___)",
+                        options = listOf("city", "\"city\"", "City", "gensan"),
+                        fillInAcceptedAnswers = listOf("city"),
+                        correctFeedback = "Correct! city stores \"Gensan\", so print(city) displays Gensan.",
+                        incorrectFeedback = "Not quite. The program needs the exact variable name city.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "What is stored?",
+                                explanation = "city = \"Gensan\" stores the text Gensan.",
+                                codeBlock = "city = \"Gensan\""),
+                            ProcessStep(stepNumber = 2, title = "Use the variable",
+                                explanation = "print(city) shows the value stored inside city.",
+                                highlightedCommand = "print(city)"),
+                            ProcessStep(stepNumber = 3, title = "Case sensitivity",
+                                explanation = "City and city are different names in Python. gensan is not the variable name in the code.")
+                        ),
+                        finalResult = "print(city) outputs Gensan.",
+                        finalOutput = "Gensan",
+                        xpReward = 25
                     )
                 )
             ),
+
+            // ── Lesson 2: Naming Variables ───────────────────────────────────────────
             Lesson(
                 id = "pvar-l2",
                 courseId = "programming-variables",
                 title = "Naming Variables",
-                description = "Pick clear names so logic is easy to follow.",
-                content = "Names should describe the meaning of the data—like userScore, not just x—unless the context is tiny.",
+                description = "Choose valid and readable Python variable names.",
+                content = "A variable name should be valid and easy to read. Use letters, numbers, and underscores. Do not start with a number, and do not use spaces or hyphens.",
                 order = 1,
+                example = "student_score = 95  →  clear, valid name.",
+                pathCardSubtitle = "Learn the rules for valid and readable variable names.",
                 activities = listOf(
+                    // Q1 – FILL_IN_BLANK: valid name
                     ActivityItem(
                         id = "pvar-l2-a1",
                         lessonId = "pvar-l2",
-                        type = ActivityType.DEBUG_CODE,
-                        prompt = "Which variable name best improves readability for a user's points?",
-                        difficultyLabel = "Naming practice",
-                        codeSnippet = "p = 120\nprint(p)",
-                        options = listOf("p", "u", "userPoints", "z1"),
-                        correctAnswerIndex = 2,
-                        correctFeedback = "Yes. Clear names make code easier to understand.",
-                        incorrectFeedback = "Choose the name that explains the data meaning.",
-                        processSteps = listOf(
-                            ProcessStep(stepNumber = 1, title = "Look at the value meaning", explanation = "120 refers to points, not a random number."),
-                            ProcessStep(stepNumber = 2, title = "Prefer descriptive names", explanation = "userPoints communicates purpose directly."),
-                            ProcessStep(stepNumber = 3, title = "Avoid vague letters", explanation = "Single letters hide intent outside math contexts.")
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank with the correct variable name.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "_____ = \"Mia\"\nprint(student_name)",
+                        options = listOf(
+                            "student_name",
+                            "2student",
+                            "student-name",
+                            "student name"
                         ),
-                        finalResult = "Best variable name: userPoints.",
-                        finalOutput = null
+                        fillInAcceptedAnswers = listOf("student_name"),
+                        correctFeedback = "Correct! Python variable names can use letters and underscores, and they cannot start with a number or contain spaces or hyphens.",
+                        incorrectFeedback = "Not quite. A valid Python variable name cannot start with a number and cannot contain spaces or hyphens.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Valid characters",
+                                explanation = "Letters, numbers, and underscores are allowed in variable names."),
+                            ProcessStep(stepNumber = 2, title = "No spaces or hyphens",
+                                explanation = "student name has a space, and student-name has a hyphen. Python does not allow those in variable names."),
+                            ProcessStep(stepNumber = 3, title = "Cannot start with a digit",
+                                explanation = "2student starts with a number. student-name has a hyphen. student name has a space.")
+                        ),
+                        finalResult = "student_name is a valid Python variable name.",
+                        xpReward = 25
+                    ),
+                    // Q2 – FILL_IN_BLANK: ___ = "CodeQuest"
+                    ActivityItem(
+                        id = "pvar-l2-a2",
+                        lessonId = "pvar-l2",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank with the best variable name.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "___ = \"CodeQuest\"\nprint(app_name)",
+                        options = listOf("app_name", "app-name", "app name", "2app"),
+                        fillInAcceptedAnswers = listOf("app_name"),
+                        correctFeedback = "Correct! app_name matches print(app_name), and the underscore is allowed.",
+                        incorrectFeedback = "Not quite. Choose a name that matches print(app_name) and follows Python naming rules.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Read the print line",
+                                explanation = "print(app_name) tells you the variable is named app_name.",
+                                codeBlock = "print(app_name)"),
+                            ProcessStep(stepNumber = 2, title = "Eliminate invalid names",
+                                explanation = "app-name has a hyphen, app name has a space, and 2app starts with a number."),
+                            ProcessStep(stepNumber = 3, title = "Confirm",
+                                explanation = "app_name uses only letters and underscore, so it is a valid Python name.")
+                        ),
+                        finalResult = "app_name = \"CodeQuest\" is valid Python.",
+                        xpReward = 25
+                    ),
+                    // Q3 – FILL_IN_BLANK: most readable name
+                    ActivityItem(
+                        id = "pvar-l2-a3",
+                        lessonId = "pvar-l2",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank with the most readable variable name.",
+                        difficultyLabel = "Readability",
+                        codeSnippet = "_____ = 95\nprint(_____)",
+                        options = listOf("x", "student_score", "ss", "a1b2c3"),
+                        fillInAcceptedAnswers = listOf("student_score"),
+                        correctFeedback = "Correct! student_score is the most readable because it clearly describes what the value represents.",
+                        incorrectFeedback = "Not quite. A readable variable name should clearly describe the data it stores.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Avoid single letters",
+                                explanation = "x and ss give no clue about what they store."),
+                            ProcessStep(stepNumber = 2, title = "Avoid random combinations",
+                                explanation = "a1b2c3 follows the rules, but it does not explain the value."),
+                            ProcessStep(stepNumber = 3, title = "Choose descriptive names",
+                                explanation = "student_score makes it clear the variable holds a student's score.")
+                        ),
+                        finalResult = "student_score is the most readable name.",
+                        xpReward = 25
+                    ),
+                    // Q4 – FILL_IN_BLANK: ___ = "Mia"
+                    ActivityItem(
+                        id = "pvar-l2-a4",
+                        lessonId = "pvar-l2",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fix the variable name so the program works.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "___ = \"Mia\"\nprint(student_name)",
+                        options = listOf("student_name", "student-name", "student name", "student.name"),
+                        fillInAcceptedAnswers = listOf("student_name"),
+                        correctFeedback = "Correct! student_name matches print(student_name), and the underscore is allowed.",
+                        incorrectFeedback = "Not quite. Use the same name shown in print(student_name). Spaces, hyphens, and dots do not work here.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Check the print line",
+                                explanation = "print(student_name) expects a variable named student_name.",
+                                codeBlock = "print(student_name)"),
+                            ProcessStep(stepNumber = 2, title = "Reject invalid separators",
+                                explanation = "For this beginner pattern, use letters with an underscore: student_name."),
+                            ProcessStep(stepNumber = 3, title = "Confirm",
+                                explanation = "student_name uses underscore as a word separator, which is the Python convention.")
+                        ),
+                        finalResult = "student_name = \"Mia\" stores Mia, and print(student_name) displays Mia.",
+                        xpReward = 25
+                    ),
+                    // Q5 – MC: why 2score is invalid
+                    ActivityItem(
+                        id = "pvar-l2-a5",
+                        lessonId = "pvar-l2",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "Why will this code cause an error in Python?",
+                        difficultyLabel = "Naming rules",
+                        codeSnippet = "2score = 90\nprint(2score)",
+                        options = listOf(
+                            "Variables cannot store numbers",
+                            "Variable names cannot start with a number",
+                            "Python does not use the equals sign",
+                            "The value 90 is too high"
+                        ),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct! Python variable names can contain numbers, but they cannot start with a number.",
+                        incorrectFeedback = "Not quite. The issue is the variable name. In Python, a variable name cannot begin with a number.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "The rule",
+                                explanation = "A Python variable name must start with a letter or underscore, not a number."),
+                            ProcessStep(stepNumber = 2, title = "What is valid",
+                                explanation = "score2 = 90 is fine because the digit comes after the first letter.",
+                                codeBlock = "score2 = 90"),
+                            ProcessStep(stepNumber = 3, title = "Why Python enforces this",
+                                explanation = "Python sees the starting 2 and cannot read 2score as a variable name.")
+                        ),
+                        finalResult = "Variable names cannot start with a number. score2 would work because the number comes later.",
+                        xpReward = 25
                     )
                 )
             ),
+
+            // ── Lesson 3: Data Types ─────────────────────────────────────────────────
             Lesson(
                 id = "pvar-l3",
                 courseId = "programming-variables",
                 title = "Data Types",
-                description = "Different kinds of data behave differently in operations.",
-                content = "Numbers, text, and true/false behave differently. Types help the computer apply the right rules.",
+                description = "Learn the simple kinds of values Python can store.",
+                content = "Every value has a type. Text in quotes is a string. Whole numbers are integers. Decimal numbers are floats. True and False are booleans.",
                 order = 2,
+                example = "\"Hello\" → str    25 → int    19.99 → float    True → bool",
+                pathCardSubtitle = "Learn text, numbers, decimals, and true/false values.",
                 activities = listOf(
+                    // Q1 – MC: type of "Hello"
                     ActivityItem(
                         id = "pvar-l3-a1",
                         lessonId = "pvar-l3",
-                        type = ActivityType.OUTPUT_TRACING,
-                        prompt = "What does this print?",
-                        difficultyLabel = "Type awareness",
-                        codeSnippet = "a = \"5\"\nb = \"2\"\nprint(a + b)",
-                        options = listOf("7", "52", "Error", "5 2"),
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "What kind of value is \"Hello\"?",
+                        difficultyLabel = "Type identification",
+                        codeSnippet = "message = \"Hello\"\nprint(message)",
+                        options = listOf("Integer", "String", "Boolean", "Float"),
                         correctAnswerIndex = 1,
-                        correctFeedback = "Correct. Strings concatenate into \"52\".",
-                        incorrectFeedback = "Both values are text, so + joins them.",
+                        correctFeedback = "Correct! Text inside quotation marks is called a string.",
+                        incorrectFeedback = "Not quite. The quotation marks tell Python this is text, so it is a string.",
                         processSteps = listOf(
-                            ProcessStep(stepNumber = 1, title = "Check the quotes", explanation = "Quoted values are strings."),
-                            ProcessStep(stepNumber = 2, title = "Apply string +", explanation = "For strings, + means join, not arithmetic."),
-                            ProcessStep(stepNumber = 3, title = "Compute result", explanation = "\"5\" + \"2\" becomes \"52\".")
+                            ProcessStep(stepNumber = 1, title = "Look for quotes",
+                                explanation = "Any value wrapped in \" \" or ' ' is a string (text)."),
+                            ProcessStep(stepNumber = 2, title = "Strings store text",
+                                explanation = "\"Hello\" is text, not a number or a true/false value."),
+                            ProcessStep(stepNumber = 3, title = "Confirm the type",
+                                explanation = "type(\"Hello\") → <class 'str'>. str is short for string.",
+                                codeBlock = "type(\"Hello\")  # <class 'str'>")
                         ),
-                        finalResult = "The output is 52.",
-                        finalOutput = "52"
+                        finalResult = "\"Hello\" is a string data type.",
+                        xpReward = 25
+                    ),
+                    // Q2 – MC: type of 25
+                    ActivityItem(
+                        id = "pvar-l3-a2",
+                        lessonId = "pvar-l3",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "What kind of value is 25?",
+                        difficultyLabel = "Type identification",
+                        codeSnippet = "age = 25\nprint(age)",
+                        options = listOf("String", "Boolean", "Integer", "List"),
+                        correctAnswerIndex = 2,
+                        correctFeedback = "Correct! 25 is a whole number, and Python calls whole numbers integers.",
+                        incorrectFeedback = "Not quite. 25 has no quotes and no decimal point, so it is a whole number.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "No quotes, no decimal",
+                                explanation = "25 has no quotes and no decimal point, so it is a whole number."),
+                            ProcessStep(stepNumber = 2, title = "Integers in Python",
+                                explanation = "Integers (int) are whole numbers: 0, 1, -5, 1000, etc."),
+                            ProcessStep(stepNumber = 3, title = "Confirm the type",
+                                explanation = "type(25) → <class 'int'>.",
+                                codeBlock = "type(25)  # <class 'int'>")
+                        ),
+                        finalResult = "25 is a whole number. Python calls this an integer.",
+                        xpReward = 25
+                    ),
+                    // Q3 – FILL_IN_BLANK: boolean value
+                    ActivityItem(
+                        id = "pvar-l3-a3",
+                        lessonId = "pvar-l3",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank with a true/false value.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "is_student = ___\nprint(is_student)",
+                        options = listOf("True", "\"True\"", "25", "student"),
+                        fillInAcceptedAnswers = listOf("True"),
+                        correctFeedback = "Correct! True is Python's word for a true value.",
+                        incorrectFeedback = "Not quite. Use True or False without quotation marks for a true/false value.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "True or false",
+                                explanation = "Booleans are true/false values. Python writes them as True and False."),
+                            ProcessStep(stepNumber = 2, title = "True vs \"True\"",
+                                explanation = "True without quotes is a true/false value. \"True\" with quotes is text."),
+                            ProcessStep(stepNumber = 3, title = "Confirm",
+                                explanation = "is_student = True stores a true/false value. print shows True.",
+                                codeBlock = "is_student = True\nprint(is_student)  # True")
+                        ),
+                        finalResult = "is_student = True stores a true/false value.",
+                        finalOutput = "True",
+                        xpReward = 25
+                    ),
+                    // Q4 – OUTPUT_TRACING: float
+                    ActivityItem(
+                        id = "pvar-l3-a4",
+                        lessonId = "pvar-l3",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What will this code print?",
+                        difficultyLabel = "Tracing output",
+                        codeSnippet = "price = 19.99\nprint(price)",
+                        options = listOf("19.99", "price", "Integer", "Error"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! price stores 19.99, so print(price) displays 19.99.",
+                        incorrectFeedback = "Not quite. print(price) shows the value stored inside price.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Store the float",
+                                explanation = "price = 19.99 stores a decimal number (float).",
+                                codeBlock = "price = 19.99"),
+                            ProcessStep(stepNumber = 2, title = "Print the variable",
+                                explanation = "print(price) shows the stored value, not the word price.",
+                                highlightedCommand = "print(price)"),
+                            ProcessStep(stepNumber = 3, title = "Output",
+                                explanation = "The screen displays 19.99.",
+                                miniVisualHint = "19.99")
+                        ),
+                        finalResult = "The output is 19.99.",
+                        finalOutput = "19.99",
+                        xpReward = 25
+                    ),
+                    // Q5 – FILL_IN_BLANK: type(age)
+                    ActivityItem(
+                        id = "pvar-l3-a5",
+                        lessonId = "pvar-l3",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Which variable should go in the blank to check the number's type?",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "name = \"Ada\"\nage = 18\nprint(type(___))",
+                        options = listOf("age", "name", "\"age\"", "type"),
+                        fillInAcceptedAnswers = listOf("age"),
+                        correctFeedback = "Correct! age stores 18, so type(age) checks the number.",
+                        incorrectFeedback = "Not quite. Choose the variable that stores the number 18.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Which variable holds a number?",
+                                explanation = "age = 18 stores a whole number. name = \"Ada\" stores text.",
+                                codeBlock = "name = \"Ada\"\nage = 18"),
+                            ProcessStep(stepNumber = 2, title = "Goal: check the number's type",
+                                explanation = "type(age) returns the type of the value stored in age, which is int."),
+                            ProcessStep(stepNumber = 3, title = "Confirm",
+                                explanation = "print(type(age)) outputs <class 'int'>.",
+                                miniVisualHint = "<class 'int'>")
+                        ),
+                        finalResult = "type(age) shows <class 'int'>.",
+                        finalOutput = "<class 'int'>",
+                        xpReward = 25
                     )
                 )
             ),
+
+            // ── Lesson 4: Updating Values ────────────────────────────────────────────
             Lesson(
                 id = "pvar-l4",
                 courseId = "programming-variables",
                 title = "Updating Values",
-                description = "Variables can change as your program runs.",
-                content = "Assignment updates what a name points to.",
+                description = "Learn how variable values can change as your program runs.",
+                content = "A variable can get a new value. Python reads the lines from top to bottom, so the latest value is the one print(...) shows.",
                 order = 3,
+                example = "score = 10  →  score = 20  →  print(score) shows 20.",
+                pathCardSubtitle = "Track how variables change when a new value is stored.",
                 activities = listOf(
+                    // Q1 – OUTPUT_TRACING: overwrite score
                     ActivityItem(
                         id = "pvar-l4-a1",
                         lessonId = "pvar-l4",
                         type = ActivityType.OUTPUT_TRACING,
-                        prompt = "What is the final output?",
-                        difficultyLabel = "State tracking",
-                        codeSnippet = "lives = 3\nlives = lives - 1\nlives = lives - 1\nprint(lives)",
-                        options = listOf("3", "2", "1", "0"),
-                        correctAnswerIndex = 2,
-                        correctFeedback = "Correct. Lives decreases from 3 to 1.",
-                        incorrectFeedback = "Trace each assignment update in order.",
+                        prompt = "What number will print at the end?",
+                        difficultyLabel = "Tracing output",
+                        codeSnippet = "score = 10\nscore = 20\nprint(score)",
+                        options = listOf("10", "20", "30", "Error"),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct! score starts as 10, then changes to 20, so print(score) displays 20.",
+                        incorrectFeedback = "Not quite. Read from top to bottom: the second line changes score to 20.",
                         processSteps = listOf(
-                            ProcessStep(stepNumber = 1, title = "Start", explanation = "lives = 3"),
-                            ProcessStep(stepNumber = 2, title = "First update", explanation = "After -1, lives = 2"),
-                            ProcessStep(stepNumber = 3, title = "Second update", explanation = "After another -1, lives = 1")
+                            ProcessStep(stepNumber = 1, title = "First value",
+                                explanation = "score = 10 stores 10.",
+                                codeBlock = "score = 10"),
+                            ProcessStep(stepNumber = 2, title = "New value",
+                                explanation = "score = 20 changes score from 10 to 20. Python uses the latest value.",
+                                codeBlock = "score = 20"),
+                            ProcessStep(stepNumber = 3, title = "Print the final value",
+                                explanation = "print(score) shows 20.",
+                                miniVisualHint = "20")
                         ),
-                        finalResult = "The output is 1.",
-                        finalOutput = "1"
+                        finalResult = "The output is 20.",
+                        finalOutput = "20",
+                        xpReward = 25
+                    ),
+                    // Q2 – FILL_IN_BLANK: points + ___ = 8
+                    ActivityItem(
+                        id = "pvar-l4-a2",
+                        lessonId = "pvar-l4",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank so the output becomes 8.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "points = 5\npoints = points + ___\nprint(points)",
+                        options = listOf("3", "5", "8", "\"3\""),
+                        fillInAcceptedAnswers = listOf("3"),
+                        correctFeedback = "Correct! points starts at 5, and 5 + 3 becomes 8.",
+                        incorrectFeedback = "Not quite. Start with 5, then choose the number that makes the total 8.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Starting value",
+                                explanation = "points = 5 — we start with 5.",
+                                codeBlock = "points = 5"),
+                            ProcessStep(stepNumber = 2, title = "What number reaches 8?",
+                                explanation = "5 + ? = 8. Solving: ? = 3. So the blank is 3."),
+                            ProcessStep(stepNumber = 3, title = "Confirm",
+                                explanation = "points = points + 3 → 5 + 3 = 8. print(points) shows 8.",
+                                miniVisualHint = "8")
+                        ),
+                        finalResult = "5 + 3 = 8.",
+                        finalOutput = "8",
+                        xpReward = 25
+                    ),
+                    // Q3 – MC: count = count + 1
+                    ActivityItem(
+                        id = "pvar-l4-a3",
+                        lessonId = "pvar-l4",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "What does count = count + 1 do to count?",
+                        difficultyLabel = "Understanding updates",
+                        codeSnippet = "count = 4\ncount = count + 1\nprint(count)",
+                        options = listOf(
+                            "It decreases count",
+                            "It increases count by 1",
+                            "It deletes count",
+                            "It prints count"
+                        ),
+                        correctAnswerIndex = 1,
+                        correctFeedback = "Correct! It takes the old count and adds 1.",
+                        incorrectFeedback = "Not quite. count + 1 means take the old value and add one more.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Right side first",
+                                explanation = "Python first reads the old value of count."),
+                            ProcessStep(stepNumber = 2, title = "Then assign",
+                                explanation = "Then Python stores the new value back in count."),
+                            ProcessStep(stepNumber = 3, title = "Net effect",
+                                explanation = "count goes up by exactly 1.",
+                                codeBlock = "count = 0\ncount = count + 1  # now 1\ncount = count + 1  # now 2")
+                        ),
+                        finalResult = "count = count + 1 increments the variable by 1.",
+                        xpReward = 25
+                    ),
+                    // Q4 – FILL_IN_BLANK: print(total)
+                    ActivityItem(
+                        id = "pvar-l4-a4",
+                        lessonId = "pvar-l4",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank to print the updated total.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "total = 50\ntotal = total + 25\nprint(___)",
+                        options = listOf("total", "Total", "\"total\"", "25"),
+                        fillInAcceptedAnswers = listOf("total"),
+                        correctFeedback = "Correct! total stores 75, so print(total) displays 75.",
+                        incorrectFeedback = "Not quite. Use the variable name total to print the updated value.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Calculate the new total",
+                                explanation = "total = 50, then total = 50 + 25 = 75.",
+                                codeBlock = "total = 50\ntotal = total + 25"),
+                            ProcessStep(stepNumber = 2, title = "Print the variable",
+                                explanation = "print(total) shows the value currently stored in total."),
+                            ProcessStep(stepNumber = 3, title = "Why not the others?",
+                                explanation = "Total is a different name. \"total\" prints the text total, not 75. 25 is just a number.")
+                        ),
+                        finalResult = "print(total) outputs 75.",
+                        finalOutput = "75",
+                        xpReward = 25
+                    ),
+                    // Q5 – OUTPUT_TRACING: level incremented twice
+                    ActivityItem(
+                        id = "pvar-l4-a5",
+                        lessonId = "pvar-l4",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What will be printed?",
+                        difficultyLabel = "Tracing output",
+                        codeSnippet = "level = 1\nlevel = level + 1\nlevel = level + 1\nprint(level)",
+                        options = listOf("1", "2", "3", "Error"),
+                        correctAnswerIndex = 2,
+                        correctFeedback = "Correct! level starts at 1, then goes to 2, then goes to 3.",
+                        incorrectFeedback = "Not quite. Follow each line: level increases by 1 two times.",
+                        processSteps = listOf(
+                            ProcessStep(stepNumber = 1, title = "Start",
+                                explanation = "level = 1.",
+                                codeBlock = "level = 1"),
+                            ProcessStep(stepNumber = 2, title = "First increment",
+                                explanation = "level = 1 + 1 = 2.",
+                                miniVisualHint = "level → 2"),
+                            ProcessStep(stepNumber = 3, title = "Second increment",
+                                explanation = "level = 2 + 1 = 3. print(level) shows 3.",
+                                miniVisualHint = "level → 3")
+                        ),
+                        finalResult = "The output is 3.",
+                        finalOutput = "3",
+                        xpReward = 25
                     )
                 )
+            )
+        )
+    )
+
+    private fun coursePythonInputOutput(): Course = Course(
+        id = "python-input-output",
+        title = "Python Input and Output",
+        description = "Practice receiving input, storing it in variables, displaying output, and fixing simple input/output code.",
+        order = 2,
+        icon = "⌨️",
+        lessons = listOf(
+            Lesson(
+                id = "pio-l1",
+                courseId = "python-input-output",
+                title = "Input and Output Basics",
+                description = "Learn what input and output mean using simple Python examples.",
+                content = "Input is information given by the user. Output is information shown by the program.",
+                order = 0,
+                pathCardSubtitle = "Tell input and output apart.",
+                activities = listOf(
+                    pioActivity("pio-l1-a1", "pio-l1", ActivityType.MULTIPLE_CHOICE, "Core concept", "name = input(\"Enter your name: \")\nprint(name)", "Which line receives input from the user?", listOf("print(name)", "name = input(\"Enter your name: \")", "name", "\"Enter your name: \""), "Correct! input() asks the user to enter information.", "Not quite. The line with input() receives the user's answer.", "Input is information given by the user.", correctAnswerIndex = 1),
+                    pioActivity("pio-l1-a2", "pio-l1", ActivityType.MULTIPLE_CHOICE, "Output concept", "message = \"Welcome\"\nprint(message)", "Which line shows output on the screen?", listOf("message = \"Welcome\"", "\"Welcome\"", "print(message)", "message"), "Correct! print(message) displays the value stored in message.", "Not quite. Output is shown using print().", "print() displays output.", correctAnswerIndex = 2),
+                    pioActivity("pio-l1-a3", "pio-l1", ActivityType.FILL_IN_BLANK, "Fill in the blank", "____(\"Hello, Python\")", "Fill in the blank to display the message.", listOf("input", "print", "message", "text"), "Correct! print(\"Hello, Python\") displays the message.", "Error! Python uses print() to show output.", "The correct code is print(\"Hello, Python\").", acceptedAnswers = listOf("print"), finalOutput = "Hello, Python"),
+                    pioActivity("pio-l1-a4", "pio-l1", ActivityType.OUTPUT_TRACING, "Predict output", "word = \"Python\"\nprint(word)", "What will this code display?", listOf("word", "Python", "print", "Error"), "Correct! print(word) displays the value stored in word.", "Not quite. The variable word stores \"Python\".", "The output is Python.", correctAnswerIndex = 1, finalOutput = "Python"),
+                    pioActivity("pio-l1-a5", "pio-l1", ActivityType.MULTIPLE_CHOICE, "Input vs Output", "age = input(\"Age: \")\nprint(\"Your age is\", age)", "Which statement best describes this program?", listOf("It only creates a password", "It asks for age, then displays a message with the age", "It deletes the age variable", "It prints the word input only"), "Correct! The program gets input first, then shows output.", "Not quite. The first line uses input(), and the second line uses print().", "This program combines input and output.", correctAnswerIndex = 1)
+                )
+            ),
+            Lesson(
+                id = "pio-l2",
+                courseId = "python-input-output",
+                title = "Printing Values and Messages",
+                description = "Practice printing text, variables, and combined messages.",
+                content = "print() can display text, variable values, or both together.",
+                order = 1,
+                pathCardSubtitle = "Print text and variable values.",
+                activities = listOf(
+                    pioActivity("pio-l2-a1", "pio-l2", ActivityType.OUTPUT_TRACING, "Predict output", "name = \"Ada\"\nprint(\"Hello\", name)", "What will this code display?", listOf("Hello name", "Ada Hello", "Hello Ada", "Error"), "Correct! Python prints the text \"Hello\" and then the value of name.", "Not quite. name stores Ada, so the output includes Ada.", "The output is Hello Ada.", correctAnswerIndex = 2, finalOutput = "Hello Ada"),
+                    pioActivity("pio-l2-a2", "pio-l2", ActivityType.FILL_IN_BLANK, "Fill in the blank", "name = \"Mia\"\nprint(\"Hi\", ____)", "Fill in the blank to display Hi Mia.", listOf("\"name\"", "name", "Mia", "input"), "Correct! name stores \"Mia\", so print(\"Hi\", name) displays Hi Mia.", "Not quite. Use the variable name without quotation marks to print its value.", "The correct answer is name.", acceptedAnswers = listOf("name"), finalOutput = "Hi Mia"),
+                    pioActivity("pio-l2-a3", "pio-l2", ActivityType.FILL_IN_BLANK, "Complete the code", "____ = \"CodeQuest\"\nprint(____)", "Complete the code to display CodeQuest.", emptyList(), "Correct! The variable app stores \"CodeQuest\", and print(app) displays its value.", "Not quite. The same variable name should be used when storing and printing the value.", "Correct code:\napp = \"CodeQuest\"\nprint(app)", codeBlanks = listOf(CodeBlank("variable", "app", listOf("app", "\"app\"", "print", "input")), CodeBlank("printedVariable", "app", listOf("app", "\"CodeQuest\"", "print", "input"))), finalOutput = "CodeQuest"),
+                    pioActivity("pio-l2-a4", "pio-l2", ActivityType.DEBUG_CODE, "Debug output", "name = \"Leo\"\nprint(\"Hello name\")", "Why does this not display Hello Leo?", listOf("name is inside the quotation marks", "print is not allowed", "Leo should be a number", "The code has no variable"), "Correct! Text inside quotation marks is printed exactly as written.", "Not quite. To print the value of name, it should be outside the quotation marks.", "Use print(\"Hello\", name) to display Hello Leo.", correctAnswerIndex = 0),
+                    pioActivity("pio-l2-a5", "pio-l2", ActivityType.FILL_IN_BLANK, "Fix the code", "name = \"Leo\"\nprint(\"Hello\", ____)", "Fill in the blank to display Hello Leo.", listOf("name", "\"name\"", "Leo", "\"Leo\""), "Correct! name should be outside quotation marks to print its value.", "Not quite. Quotation marks print the word literally.", "Correct code:\nprint(\"Hello\", name)", acceptedAnswers = listOf("name"), finalOutput = "Hello Leo")
+                )
+            ),
+            Lesson(
+                id = "pio-l3",
+                courseId = "python-input-output",
+                title = "Getting User Input",
+                description = "Practice using input() and storing user answers.",
+                content = "input() asks the user for information. The variable on the left stores what the user types.",
+                order = 2,
+                pathCardSubtitle = "Use input() and variables together.",
+                activities = listOf(
+                    pioActivity("pio-l3-a1", "pio-l3", ActivityType.MULTIPLE_CHOICE, "Input function", "city = input(\"Enter city: \")", "Where will the user's answer be stored?", listOf("In input", "In \"Enter city: \"", "In city", "In print"), "Correct! The user's answer is stored in the variable city.", "Not quite. The variable on the left side stores the input.", "city stores what the user types.", correctAnswerIndex = 2),
+                    pioActivity("pio-l3-a2", "pio-l3", ActivityType.FILL_IN_BLANK, "Fill in the blank", "name = ____(\"Enter name: \")", "Fill in the blank to ask the user for their name.", listOf("print", "input", "show", "text"), "Correct! input() receives information from the user.", "Error! Python uses input() for user input.", "Correct code:\nname = input(\"Enter name: \")", acceptedAnswers = listOf("input")),
+                    pioActivity("pio-l3-a3", "pio-l3", ActivityType.FILL_IN_BLANK, "Complete input/output", "____ = input(\"Favorite color: \")\nprint(\"Color:\", ____)", "Complete the code to ask for a favorite color and display it.", emptyList(), "Correct! color stores the user's answer, then print displays it.", "Not quite. Use the same variable name to store and display the input.", "Correct code:\ncolor = input(\"Favorite color: \")\nprint(\"Color:\", color)", codeBlanks = listOf(CodeBlank("variable", "color", listOf("color", "\"color\"", "print", "input")), CodeBlank("printedVariable", "color", listOf("color", "\"Favorite color\"", "input", "print")))),
+                    pioActivity("pio-l3-a4", "pio-l3", ActivityType.MULTIPLE_CHOICE, "Program order", "food = input(\"Favorite food: \")\nprint(\"You like\", food)", "What happens first?", listOf("The program prints You like", "The program asks for favorite food", "The program deletes food", "The program shows an error"), "Correct! Python runs the input line first.", "Not quite. Python reads the code from top to bottom.", "The program asks for input before printing the message.", correctAnswerIndex = 1),
+                    pioActivity("pio-l3-a5", "pio-l3", ActivityType.DEBUG_CODE, "Debug input", "name = input(\"Name: \")\nprint(\"Hello\", user)", "Why can this code cause an error?", listOf("input() cannot be used", "user was never created as a variable", "print cannot show text", "name should be inside quotation marks"), "Correct! The program stores input in name, but tries to print user.", "Not quite. Check if the variable names match.", "Use print(\"Hello\", name).", correctAnswerIndex = 1)
+                )
+            ),
+            Lesson(
+                id = "pio-l4",
+                courseId = "python-input-output",
+                title = "Fixing Input and Output Code",
+                description = "Debug common beginner mistakes in input and output programs.",
+                content = "Input/output bugs often happen when variable names do not match or print() is missing.",
+                order = 3,
+                pathCardSubtitle = "Fix simple input/output programs.",
+                activities = listOf(
+                    pioActivity("pio-l4-a1", "pio-l4", ActivityType.DEBUG_CODE, "Debug variable", "name = input(\"Name: \")\nprint(\"Hello\", username)", "What is wrong with this code?", listOf("username does not match the variable name", "input should be deleted", "print should be first", "\"Hello\" cannot be printed"), "Correct! The input is stored in name, but the program tries to print username.", "Not quite. The variable names must match.", "Correct code:\nprint(\"Hello\", name)", correctAnswerIndex = 0),
+                    pioActivity("pio-l4-a2", "pio-l4", ActivityType.FILL_IN_BLANK, "Fix the code", "name = input(\"Name: \")\nprint(\"Hello\", ____)", "Fill in the blank to fix the code.", listOf("name", "username", "\"Name\"", "input"), "Correct! name stores the user's input.", "Error! The printed variable should match the input variable.", "Correct code:\nprint(\"Hello\", name)", acceptedAnswers = listOf("name")),
+                    pioActivity("pio-l4-a3", "pio-l4", ActivityType.FILL_IN_BLANK, "Complete the program", "____ = input(\"Enter username: \")\n____(\"Welcome\", username)", "Complete the program to ask for a username and display a welcome message.", emptyList(), "Correct! username stores the input, and print displays the welcome message.", "Not quite. First store input in a variable, then use print() to display output.", "Correct code:\nusername = input(\"Enter username: \")\nprint(\"Welcome\", username)", codeBlanks = listOf(CodeBlank("username", "username", listOf("username", "\"user\"", "print", "input")), CodeBlank("command", "print", listOf("print", "input", "show", "text")))),
+                    pioActivity("pio-l4-a4", "pio-l4", ActivityType.FILL_IN_BLANK, "Input and Output Practice", "name = input(\"Enter your name: \")\ncourse = input(\"Enter your course: \")\n\nprint(\"Hello\", ____)\nprint(\"Welcome to\", ____)", "Complete the program so it displays the user's name and course.", emptyList(), "Correct! The program stores the user's input in variables, then prints the values using those variable names.", "Not quite. Use the variable name without quotation marks when you want to print the value stored inside it.", "Correct code:\nname = input(\"Enter your name: \")\ncourse = input(\"Enter your course: \")\n\nprint(\"Hello\", name)\nprint(\"Welcome to\", course)", codeBlanks = listOf(CodeBlank("name", "name", listOf("name", "\"name\"", "course", "input")), CodeBlank("course", "course", listOf("course", "\"course\"", "name", "print")))),
+                    pioActivity("pio-l4-a5", "pio-l4", ActivityType.MULTIPLE_CHOICE, "Final debug review", "name = input(\"Name: \")\nprint(\"Hello\", name)", "Which statement best describes this program?", listOf("It stores input in name and prints a greeting", "It only prints the word name", "It has no output", "It deletes the user's answer"), "Correct! The program receives input and displays output.", "Not quite. input() receives information and print() displays it.", "This is a simple input/output program.", correctAnswerIndex = 0)
+                )
+            )
+        )
+    )
+
+    private fun pioActivity(
+        id: String,
+        lessonId: String,
+        type: ActivityType,
+        category: String,
+        codeSnippet: String?,
+        prompt: String,
+        options: List<String>,
+        correctFeedback: String,
+        incorrectFeedback: String,
+        finalResult: String,
+        correctAnswerIndex: Int = 0,
+        acceptedAnswers: List<String> = emptyList(),
+        codeBlanks: List<CodeBlank> = emptyList(),
+        finalOutput: String? = null
+    ): ActivityItem = ActivityItem(
+        id = id,
+        lessonId = lessonId,
+        type = type,
+        prompt = prompt,
+        difficultyLabel = category,
+        codeSnippet = codeSnippet,
+        options = options,
+        correctAnswerIndex = if (type == ActivityType.FILL_IN_BLANK) -1 else correctAnswerIndex,
+        fillInAcceptedAnswers = acceptedAnswers,
+        codeBlanks = codeBlanks,
+        correctFeedback = correctFeedback,
+        incorrectFeedback = incorrectFeedback,
+        processSteps = listOf(
+            ProcessStep(1, "Read the question", "Start with the code example if one is shown."),
+            ProcessStep(2, "Pick the answer", "Choose the option that matches what Python does."),
+            ProcessStep(3, "Review", finalResult)
+        ),
+        finalResult = finalResult,
+        finalOutput = finalOutput,
+        xpReward = 25
+    )
+
+    private fun coursePythonConditions(): Course = Course(
+        id = "python-conditions",
+        title = "Python Conditions",
+        description = "Learn how Python makes decisions using if, else, and comparison operators.",
+        order = 3,
+        icon = "🔀",
+        lessons = listOf(
+            Lesson(
+                id = "pc-l1",
+                courseId = "python-conditions",
+                title = "What is a Condition?",
+                description = "Learn that conditions are true-or-false checks.",
+                content = "A condition is a check that can be true or false.",
+                order = 0,
+                pathCardSubtitle = "Read true-or-false checks.",
+                activities = listOf(
+                    pioActivity("pc-l1-a1", "pc-l1", ActivityType.MULTIPLE_CHOICE, "Core concept", "score = 85\nscore >= 75", "What is a condition in Python?", listOf("A true-or-false check", "A picture in the app", "A password box", "A type of phone screen"), "Correct! A condition checks whether something is true or false.", "Not quite. A condition is a check that can be true or false.", "score >= 75 checks if the score is at least 75.", correctAnswerIndex = 0),
+                    pioActivity("pc-l1-a2", "pc-l1", ActivityType.MULTIPLE_CHOICE, "True or false", "age = 18\nage >= 18", "Is the condition age >= 18 true or false?", listOf("False", "True", "Error", "It prints age"), "Correct! age is 18, so age >= 18 is true.", "Not quite. 18 is equal to 18, so the condition is true.", ">= means greater than or equal to.", correctAnswerIndex = 1),
+                    pioActivity("pc-l1-a3", "pc-l1", ActivityType.FILL_IN_BLANK, "Fill in the blank", "score = 90\nscore ____ 75", "Fill in the blank to check if score is at least 75.", listOf(">=", "=", "<", "print"), "Correct! score >= 75 checks if score is at least 75.", "Not quite. Use >= when checking \"at least\" or \"greater than or equal.\"", "The correct condition is score >= 75.", acceptedAnswers = listOf(">=")),
+                    pioActivity("pc-l1-a4", "pc-l1", ActivityType.MULTIPLE_CHOICE, "Read condition", "temperature = 30\ntemperature > 25", "What does this condition check?", listOf("If temperature is equal to 25", "If temperature is less than 25", "If temperature is greater than 25", "If temperature is printed"), "Correct! The > symbol checks if the left value is greater than the right value.", "Not quite. The > symbol means greater than.", "temperature > 25 checks if temperature is above 25.", correctAnswerIndex = 2),
+                    pioActivity("pc-l1-a5", "pc-l1", ActivityType.MULTIPLE_CHOICE, "Beginner review", "is_raining = False", "What kind of value is False?", listOf("String", "Boolean", "Integer", "Comment"), "Correct! True and False are Boolean values.", "Not quite. True and False are called Boolean values.", "Conditions often result in Boolean values: True or False.", correctAnswerIndex = 1)
+                )
+            ),
+            Lesson(
+                id = "pc-l2",
+                courseId = "python-conditions",
+                title = "Using if Statements",
+                description = "Learn how if runs code when a condition is true.",
+                content = "An if statement runs its indented code only when the condition is true.",
+                order = 1,
+                pathCardSubtitle = "Use if to run code conditionally.",
+                activities = listOf(
+                    pioActivity("pc-l2-a1", "pc-l2", ActivityType.OUTPUT_TRACING, "Core concept", "score = 90\n\nif score >= 75:\n    print(\"Passed\")", "What will this program print?", listOf("Failed", "Passed", "score", "Nothing"), "Correct! Since 90 is at least 75, the condition is true.", "Not quite. The if block runs because score >= 75 is true.", "The program prints Passed.", correctAnswerIndex = 1, finalOutput = "Passed"),
+                    pioActivity("pc-l2-a2", "pc-l2", ActivityType.FILL_IN_BLANK, "Fill in the blank", "score = 80\n\nif score ____ 75:\n    print(\"Passed\")", "Fill in the blank so the program prints Passed.", listOf(">=", "<", "=", "print"), "Correct! score >= 75 checks if the score is passing.", "Not quite. Use >= to check if score is at least 75.", "The correct condition is score >= 75.", acceptedAnswers = listOf(">=")),
+                    pioActivity("pc-l2-a3", "pc-l2", ActivityType.MULTIPLE_CHOICE, "If syntax", "if score >= 75:\n    print(\"Passed\")", "Why does the if line end with a colon?", listOf("The colon starts the indented code block", "The colon prints the result", "The colon deletes the score", "The colon turns text into a number"), "Correct! In Python, the colon starts the block that belongs to the if statement.", "Not quite. The colon tells Python that an indented block follows.", "Python uses a colon before the indented if body.", correctAnswerIndex = 0),
+                    pioActivity("pc-l2-a4", "pc-l2", ActivityType.FILL_IN_BLANK, "Complete the code", "score = 88\n\nif score ____ 75:\n    print(____)", "Complete the if statement to print Passed when score is passing.", emptyList(), "Correct! The condition is true, so Python prints Passed.", "Not quite. Use >= for passing score, and use quotation marks for text.", "Correct code:\nif score >= 75:\n    print(\"Passed\")", codeBlanks = listOf(CodeBlank("operator", ">=", listOf(">=", "<", "=", "print")), CodeBlank("message", "\"Passed\"", listOf("\"Passed\"", "Passed", "score", "75"))), finalOutput = "Passed"),
+                    pioActivity("pc-l2-a5", "pc-l2", ActivityType.DEBUG_CODE, "Debug if", "score = 90\n\nif score >= 75\n    print(\"Passed\")", "What is missing in this code?", listOf("Quotation marks", "A closing parenthesis", "A colon after the if condition", "The variable score"), "Correct! Python needs a colon after the if condition.", "Not quite. Check the end of the if line.", "The fixed line is if score >= 75:", correctAnswerIndex = 2)
+                )
+            ),
+            Lesson(
+                id = "pc-l3",
+                courseId = "python-conditions",
+                title = "Using else",
+                description = "Learn how else handles the other path.",
+                content = "else runs when the if condition is false.",
+                order = 2,
+                pathCardSubtitle = "Use else for the other result.",
+                activities = listOf(
+                    pioActivity("pc-l3-a1", "pc-l3", ActivityType.OUTPUT_TRACING, "Core concept", "score = 60\n\nif score >= 75:\n    print(\"Passed\")\nelse:\n    print(\"Try again\")", "What will this program print?", listOf("Passed", "Try again", "score", "Nothing"), "Correct! Since 60 is below 75, the else block runs.", "Not quite. The if condition is false, so Python uses else.", "The output is Try again.", correctAnswerIndex = 1, finalOutput = "Try again"),
+                    pioActivity("pc-l3-a2", "pc-l3", ActivityType.FILL_IN_BLANK, "Fill in the blank", "score = 60\n\nif score >= 75:\n    print(\"Passed\")\n____:\n    print(\"Try again\")", "Fill in the blank to handle the false condition.", listOf("else", "if", "print", "input"), "Correct! else runs when the if condition is false.", "Not quite. Use else for the other result.", "The correct keyword is else.", acceptedAnswers = listOf("else")),
+                    pioActivity("pc-l3-a3", "pc-l3", ActivityType.OUTPUT_TRACING, "Read code", "is_open = False\n\nif is_open:\n    print(\"Enter\")\nelse:\n    print(\"Closed\")", "What will this code print?", listOf("Enter", "Closed", "is_open", "False Enter"), "Correct! is_open is False, so the else block runs.", "Not quite. The if block only runs when the condition is true.", "The output is Closed.", correctAnswerIndex = 1, finalOutput = "Closed"),
+                    pioActivity("pc-l3-a4", "pc-l3", ActivityType.FILL_IN_BLANK, "Complete the code", "age = 15\n\nif age >= 18:\n    print(\"Adult\")\n____:\n    print(____)", "Complete the program so it prints Minor when age is below 18.", emptyList(), "Correct! Since age is 15, the else block prints Minor.", "Not quite. Use else for the other case, and use quotation marks for text.", "Correct code:\nelse:\n    print(\"Minor\")", codeBlanks = listOf(CodeBlank("keyword", "else", listOf("else", "if", "print", "input")), CodeBlank("message", "\"Minor\"", listOf("\"Minor\"", "Minor", "age", "\"Adult\""))), finalOutput = "Minor"),
+                    pioActivity("pc-l3-a5", "pc-l3", ActivityType.MULTIPLE_CHOICE, "Purpose", null, "When does the else block run?", listOf("When the if condition is false", "When the if condition is true", "Before the program starts", "Only when there is no variable"), "Correct! else runs when the if condition is false.", "Not quite. else is the fallback when if is not true.", "if handles the true case, else handles the other case.", correctAnswerIndex = 0)
+                )
+            ),
+            Lesson(
+                id = "pc-l4",
+                courseId = "python-conditions",
+                title = "Comparing Values",
+                description = "Learn simple comparison operators.",
+                content = "Comparison operators like ==, <, and >= help Python make decisions.",
+                order = 3,
+                pathCardSubtitle = "Compare values with ==, <, and >=.",
+                activities = listOf(
+                    pioActivity("pc-l4-a1", "pc-l4", ActivityType.MULTIPLE_CHOICE, "Comparison symbols", "x = 10\nx == 10", "What does == check?", listOf("It assigns a value", "It checks if two values are equal", "It prints x", "It asks for input"), "Correct! == checks if two values are equal.", "Not quite. One equals sign assigns, but two equals signs compare.", "Use == for comparison.", correctAnswerIndex = 1),
+                    pioActivity("pc-l4-a2", "pc-l4", ActivityType.FILL_IN_BLANK, "Fill in the blank", "password = \"code123\"\n\nif password ____ \"code123\":\n    print(\"Access granted\")", "Fill in the blank to check if the password matches.", listOf("==", "=", ">=", "input"), "Correct! == checks if the two values are equal.", "Not quite. Use == when comparing values.", "The condition is password == \"code123\".", acceptedAnswers = listOf("=="), finalOutput = "Access granted"),
+                    pioActivity("pc-l4-a3", "pc-l4", ActivityType.MULTIPLE_CHOICE, "Greater or less", "points = 40\npoints < 50", "Is points < 50 true or false?", listOf("False", "True", "Error", "It prints 50"), "Correct! 40 is less than 50.", "Not quite. The < symbol checks if the left value is smaller.", "points < 50 is true.", correctAnswerIndex = 1),
+                    pioActivity("pc-l4-a4", "pc-l4", ActivityType.FILL_IN_BLANK, "Complete the condition", "level = 3\n\nif level ____ 3:\n    print(____)", "Complete the condition so the program prints Level matched.", emptyList(), "Correct! == checks if level equals 3, and the text is printed.", "Not quite. Use == for comparison and quotation marks for text.", "Correct code:\nif level == 3:\n    print(\"Level matched\")", codeBlanks = listOf(CodeBlank("operator", "==", listOf("==", "=", "<", "input")), CodeBlank("message", "\"Level matched\"", listOf("\"Level matched\"", "Level matched", "level", "3"))), finalOutput = "Level matched"),
+                    pioActivity("pc-l4-a5", "pc-l4", ActivityType.MULTIPLE_CHOICE, "Final review", "score = 75\n\nif score >= 75:\n    print(\"Passed\")\nelse:\n    print(\"Failed\")", "Which statement best describes this program?", listOf("It always prints Failed", "It checks the score and prints Passed if the score is at least 75", "It asks the user for input", "It has no condition"), "Correct! The program checks the score before choosing what to print.", "Not quite. The if statement checks whether score is at least 75.", "This is a simple condition program.", correctAnswerIndex = 1, finalOutput = "Passed")
+                )
+            )
+        )
+    )
+
+    private fun placeholderPythonLesson(
+        id: String,
+        courseId: String,
+        title: String,
+        description: String,
+        order: Int,
+        prompt: String,
+        codeSnippet: String,
+        options: List<String>,
+        correctFeedback: String,
+        incorrectFeedback: String
+    ): Lesson = Lesson(
+        id = id,
+        courseId = courseId,
+        title = title,
+        description = description,
+        content = description,
+        order = order,
+        pathCardSubtitle = description,
+        activities = listOf(
+            ActivityItem(
+                id = "$id-a1",
+                lessonId = id,
+                type = ActivityType.MULTIPLE_CHOICE,
+                prompt = prompt,
+                difficultyLabel = "Preview",
+                codeSnippet = codeSnippet,
+                options = options,
+                correctAnswerIndex = 0,
+                correctFeedback = correctFeedback,
+                incorrectFeedback = incorrectFeedback,
+                processSteps = listOf(
+                    ProcessStep(1, "Read the code", "Look at the Python example first."),
+                    ProcessStep(2, "Choose the best answer", "Use the code to understand the idea."),
+                    ProcessStep(3, "Review", correctFeedback)
+                ),
+                finalResult = correctFeedback,
+                xpReward = 25
             )
         )
     )
@@ -1241,70 +2085,444 @@ object LocalContentRepository {
     private fun courseThinkingInPython(): Course = Course(
         id = "thinking-python",
         title = "Thinking in Python",
-        description = "Start reading and writing simple Python-style logic.",
+        description = "Learn how Python reads instructions, prints output, uses comments, and handles simple beginner errors.",
         order = 2,
         icon = "🐍",
         lessons = listOf(
             Lesson(
                 id = "tp-l1",
                 courseId = "thinking-python",
-                title = "Python Syntax Basics",
-                description = "Indentation and colons shape how blocks run.",
-                content = "Python uses indentation to group statements.",
+                title = "Python Prints Output",
+                description = "Learn how Python displays messages using print().",
+                content = "print() tells Python to display text or values on the screen.",
                 order = 0,
                 activities = listOf(
                     ActivityItem(
                         id = "tp-l1-a1",
                         lessonId = "tp-l1",
-                        type = ActivityType.DEBUG_CODE,
-                        prompt = "Which line is required to make this Python if-block valid?",
-                        difficultyLabel = "Syntax basics",
-                        codeSnippet = "score = 10\nif score > 5\n    print(\"ok\")",
-                        options = listOf(
-                            "Add : after if score > 5",
-                            "Remove indentation from print",
-                            "Change score to a string",
-                            "Delete print"
-                        ),
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "What does print() do in Python?",
+                        difficultyLabel = "Core concept",
+                        codeSnippet = "print(\"Hello\")",
+                        options = listOf("It displays output on the screen", "It deletes the program", "It creates a password", "It turns off the computer"),
                         correctAnswerIndex = 0,
-                        correctFeedback = "Correct. Python if statements need a colon.",
-                        incorrectFeedback = "Look at Python block syntax after conditions.",
+                        correctFeedback = "Correct! print() displays text or values on the screen.",
+                        incorrectFeedback = "Not quite. print() is used to show output.",
                         processSteps = listOf(
-                            ProcessStep(stepNumber = 1, title = "Find syntax marker", explanation = "Python uses : to start a block."),
-                            ProcessStep(stepNumber = 2, title = "Keep indentation", explanation = "Indented lines belong to the if block."),
-                            ProcessStep(stepNumber = 3, title = "Apply fix", explanation = "if score > 5: is the valid header.")
+                            ProcessStep(1, "Read print()", "print() is a Python instruction."),
+                            ProcessStep(2, "Look inside", "The text inside the parentheses is what Python displays."),
+                            ProcessStep(3, "Result", "print() tells Python to display something.")
                         ),
-                        finalResult = "Fixed syntax: add colon after condition.",
-                        finalOutput = null
+                        finalResult = "print() tells Python to display something.",
+                        finalOutput = "Hello",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l1-a2",
+                        lessonId = "tp-l1",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What will this code print?",
+                        difficultyLabel = "Predict output",
+                        codeSnippet = "print(\"CodeQuest\")",
+                        options = listOf("CodeQuest", "print", "\"print CodeQuest\"", "Error"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! Python prints the text inside the quotation marks.",
+                        incorrectFeedback = "Not quite. The text inside the quotation marks is what appears as output.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Find the text", "The text is CodeQuest."),
+                            ProcessStep(2, "Use print()", "print() displays that text."),
+                            ProcessStep(3, "Output", "The output is CodeQuest.")
+                        ),
+                        finalResult = "The output is CodeQuest.",
+                        finalOutput = "CodeQuest",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l1-a3",
+                        lessonId = "tp-l1",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank to display the message.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "____(\"Hello, Python\")",
+                        options = listOf("print", "show", "display", "text"),
+                        fillInAcceptedAnswers = listOf("print"),
+                        correctFeedback = "Correct! print(\"Hello, Python\") displays the message.",
+                        incorrectFeedback = "Error! Python uses print() to display output, not show or display.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Choose the command", "Python uses print to display output."),
+                            ProcessStep(2, "Complete the line", "print(\"Hello, Python\") is the complete instruction."),
+                            ProcessStep(3, "Output", "The message appears on the screen.")
+                        ),
+                        finalResult = "The correct code is print(\"Hello, Python\").",
+                        finalOutput = "Hello, Python",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l1-a4",
+                        lessonId = "tp-l1",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "Which line correctly prints the word Welcome?",
+                        difficultyLabel = "Choose correct code",
+                        options = listOf("print(\"Welcome\")", "print Welcome", "show(\"Welcome\")", "\"Welcome\" print"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! Python uses print() with parentheses and quotation marks for text.",
+                        incorrectFeedback = "Not quite. The correct format is print(\"message\").",
+                        processSteps = listOf(
+                            ProcessStep(1, "Use print", "print is the command for output."),
+                            ProcessStep(2, "Use parentheses", "The message goes inside parentheses."),
+                            ProcessStep(3, "Use quotes", "Text like Welcome needs quotation marks.")
+                        ),
+                        finalResult = "print(\"Welcome\") displays Welcome.",
+                        finalOutput = "Welcome",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l1-a5",
+                        lessonId = "tp-l1",
+                        type = ActivityType.DEBUG_CODE,
+                        prompt = "Why can this code cause an error?",
+                        difficultyLabel = "Debug output",
+                        codeSnippet = "print(Hello)",
+                        options = listOf("Hello should be inside quotation marks", "print cannot display text", "Parentheses are not allowed", "Python does not use words"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! Text should be placed inside quotation marks.",
+                        incorrectFeedback = "Not quite. Python treats Hello without quotation marks as a variable name.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Find the text", "Hello is meant to be text."),
+                            ProcessStep(2, "Add quotes", "Text should be inside quotation marks."),
+                            ProcessStep(3, "Fix", "Write print(\"Hello\").")
+                        ),
+                        finalResult = "To print text, write print(\"Hello\").",
+                        finalOutput = "Hello",
+                        xpReward = 25
                     )
                 )
             ),
             Lesson(
                 id = "tp-l2",
                 courseId = "thinking-python",
-                title = "Simple Control Flow",
-                description = "if / else routes your program based on conditions.",
-                content = "Control flow chooses which lines run next.",
+                title = "Reading Code in Order",
+                description = "Learn that Python runs instructions from top to bottom.",
+                content = "Python reads code one line at a time from top to bottom.",
                 order = 1,
                 activities = listOf(
                     ActivityItem(
                         id = "tp-l2-a1",
                         lessonId = "tp-l2",
                         type = ActivityType.OUTPUT_TRACING,
-                        prompt = "What will be printed?",
-                        difficultyLabel = "Control flow trace",
-                        codeSnippet = "temp = 31\nif temp > 30:\n    print(\"hot\")\nelse:\n    print(\"cool\")",
-                        options = listOf("hot", "cool", "31", "error"),
+                        prompt = "What will be printed first?",
+                        difficultyLabel = "Code order",
+                        codeSnippet = "print(\"Start\")\nprint(\"End\")",
+                        options = listOf("Start", "End", "Both at the same time", "Nothing"),
                         correctAnswerIndex = 0,
-                        correctFeedback = "Correct. Condition is true, so \"hot\" prints.",
-                        incorrectFeedback = "Check whether temp > 30 is true or false.",
+                        correctFeedback = "Correct! Python reads the first line before the second line.",
+                        incorrectFeedback = "Not quite. Python runs code from top to bottom.",
                         processSteps = listOf(
-                            ProcessStep(stepNumber = 1, title = "Evaluate condition", explanation = "31 > 30 is true."),
-                            ProcessStep(stepNumber = 2, title = "Choose branch", explanation = "True means run the if branch."),
-                            ProcessStep(stepNumber = 3, title = "Output", explanation = "The program prints hot.")
+                            ProcessStep(1, "Line 1", "Python runs print(\"Start\") first."),
+                            ProcessStep(2, "Line 2", "Then Python runs print(\"End\")."),
+                            ProcessStep(3, "First output", "Start appears first.")
                         ),
-                        finalResult = "The output is hot.",
-                        finalOutput = "hot"
+                        finalResult = "Start is printed first because it is on the first line.",
+                        finalOutput = "Start\nEnd",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l2-a2",
+                        lessonId = "tp-l2",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What is the correct order of the output?",
+                        difficultyLabel = "Predict output",
+                        codeSnippet = "print(\"A\")\nprint(\"B\")\nprint(\"C\")",
+                        options = listOf("A, B, C", "C, B, A", "A, C, B", "B, A, C"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! Python prints the lines in order from top to bottom.",
+                        incorrectFeedback = "Not quite. Follow the code line by line.",
+                        processSteps = listOf(
+                            ProcessStep(1, "First line", "A prints first."),
+                            ProcessStep(2, "Second line", "B prints second."),
+                            ProcessStep(3, "Third line", "C prints third.")
+                        ),
+                        finalResult = "The output order is A, then B, then C.",
+                        finalOutput = "A\nB\nC",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l2-a3",
+                        lessonId = "tp-l2",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank to complete the correct step order.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "print(\"Step 1\")\nprint(\"____\")\nprint(\"Step 3\")",
+                        options = listOf("Step 2", "Step 4", "Start", "End"),
+                        fillInAcceptedAnswers = listOf("Step 2"),
+                        correctFeedback = "Correct! Step 2 belongs between Step 1 and Step 3.",
+                        incorrectFeedback = "Not quite. The missing step should keep the sequence in order.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Start", "The first line prints Step 1."),
+                            ProcessStep(2, "Middle", "The middle should be Step 2."),
+                            ProcessStep(3, "End", "The last line prints Step 3.")
+                        ),
+                        finalResult = "The complete order is Step 1, Step 2, Step 3.",
+                        finalOutput = "Step 1\nStep 2\nStep 3",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l2-a4",
+                        lessonId = "tp-l2",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "Which program prints Morning first, then Afternoon?",
+                        difficultyLabel = "Choose correct code",
+                        options = listOf(
+                            "print(\"Morning\")\nprint(\"Afternoon\")",
+                            "print(\"Afternoon\")\nprint(\"Morning\")",
+                            "print(\"Morning Afternoon\")",
+                            "print(\"Evening\")\nprint(\"Morning\")"
+                        ),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! The first print line runs first, then the second print line.",
+                        incorrectFeedback = "Not quite. Python follows the order of the lines.",
+                        processSteps = listOf(
+                            ProcessStep(1, "First output", "Put Morning on the first line."),
+                            ProcessStep(2, "Second output", "Put Afternoon on the second line."),
+                            ProcessStep(3, "Order matters", "Python prints them in that order.")
+                        ),
+                        finalResult = "To print Morning first, put print(\"Morning\") first.",
+                        finalOutput = "Morning\nAfternoon",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l2-a5",
+                        lessonId = "tp-l2",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "Why does order matter in Python?",
+                        difficultyLabel = "Sequence concept",
+                        options = listOf("Python follows instructions from top to bottom", "Python ignores the first line", "Python always runs the last line first", "Python only reads comments"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! Python follows instructions in sequence.",
+                        incorrectFeedback = "Not quite. Python reads code one line at a time from top to bottom.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Read line 1", "Python starts at the top."),
+                            ProcessStep(2, "Move down", "Then it goes to the next line."),
+                            ProcessStep(3, "Result", "Changing the order can change the result.")
+                        ),
+                        finalResult = "Changing the order of code can change the result.",
+                        xpReward = 25
+                    )
+                )
+            ),
+            Lesson(
+                id = "tp-l3",
+                courseId = "thinking-python",
+                title = "Comments and Clear Code",
+                description = "Learn how comments help explain Python code.",
+                content = "A comment is a note for humans. Python ignores comment lines when the program runs.",
+                order = 2,
+                activities = listOf(
+                    ActivityItem(
+                        id = "tp-l3-a1",
+                        lessonId = "tp-l3",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "What is a comment in Python?",
+                        difficultyLabel = "Core concept",
+                        codeSnippet = "# This explains the code\nprint(\"Hello\")",
+                        options = listOf("A note for humans reading the code", "A command that always prints text", "A required password", "A type of number"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! Comments help explain code for people.",
+                        incorrectFeedback = "Not quite. Comments are notes in the code.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Find the comment", "The line starting with # is a comment."),
+                            ProcessStep(2, "Human note", "It helps people understand the code."),
+                            ProcessStep(3, "Python ignores it", "Python does not print the comment.")
+                        ),
+                        finalResult = "Python ignores comments when running the program.",
+                        finalOutput = "Hello",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l3-a2",
+                        lessonId = "tp-l3",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "Which line is a comment?",
+                        difficultyLabel = "Identify comment",
+                        codeSnippet = "# print greeting\nprint(\"Hello\")",
+                        options = listOf("# print greeting", "print(\"Hello\")", "\"Hello\"", "greeting"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! A Python comment starts with #.",
+                        incorrectFeedback = "Not quite. Look for the line that starts with #.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Look for #", "Python comments start with #."),
+                            ProcessStep(2, "Read the note", "# print greeting explains the code."),
+                            ProcessStep(3, "Output line", "print(\"Hello\") is the line that displays output.")
+                        ),
+                        finalResult = "# print greeting is a comment.",
+                        finalOutput = "Hello",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l3-a3",
+                        lessonId = "tp-l3",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank to make the first line a Python comment.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "____ This stores the user's name\nname = \"Ada\"",
+                        options = listOf("#", "//", "--", "comment"),
+                        fillInAcceptedAnswers = listOf("#"),
+                        correctFeedback = "Correct! Python comments start with #.",
+                        incorrectFeedback = "Error! Python uses # for comments, not // or --.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Choose #", "# starts a Python comment."),
+                            ProcessStep(2, "Read the note", "The comment explains the next line."),
+                            ProcessStep(3, "Python ignores it", "The comment does not run as code.")
+                        ),
+                        finalResult = "The correct comment is # This stores the user's name.",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l3-a4",
+                        lessonId = "tp-l3",
+                        type = ActivityType.OUTPUT_TRACING,
+                        prompt = "What will be printed?",
+                        difficultyLabel = "Predict output",
+                        codeSnippet = "# Hello\nprint(\"Python\")",
+                        options = listOf("Python", "Hello", "Hello Python", "Nothing"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! The comment is ignored, and only Python is printed.",
+                        incorrectFeedback = "Not quite. Python ignores the line that starts with #.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Comment line", "# Hello is ignored by Python."),
+                            ProcessStep(2, "Print line", "print(\"Python\") displays Python."),
+                            ProcessStep(3, "Output", "Only Python appears.")
+                        ),
+                        finalResult = "Only print(\"Python\") creates output.",
+                        finalOutput = "Python",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l3-a5",
+                        lessonId = "tp-l3",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "Why are comments useful in code?",
+                        difficultyLabel = "Purpose",
+                        options = listOf("They help explain what the code does", "They make the computer run faster", "They replace all variables", "They are printed automatically"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! Comments make code easier to understand.",
+                        incorrectFeedback = "Not quite. Comments are mainly for explanation.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Write a note", "A comment explains the code."),
+                            ProcessStep(2, "Help humans", "It helps someone read the program later."),
+                            ProcessStep(3, "No output", "Comments are not printed automatically.")
+                        ),
+                        finalResult = "Good comments help humans understand the program.",
+                        xpReward = 25
+                    )
+                )
+            ),
+            Lesson(
+                id = "tp-l4",
+                courseId = "thinking-python",
+                title = "Simple Python Errors",
+                description = "Learn how to notice and fix beginner Python mistakes.",
+                content = "Beginner errors often come from missing parentheses, missing quotation marks, or incomplete print statements.",
+                order = 3,
+                activities = listOf(
+                    ActivityItem(
+                        id = "tp-l4-a1",
+                        lessonId = "tp-l4",
+                        type = ActivityType.DEBUG_CODE,
+                        prompt = "What is wrong with this code?",
+                        difficultyLabel = "Debug syntax",
+                        codeSnippet = "print(\"Hello\"",
+                        options = listOf("It is missing a closing parenthesis", "Hello should not use quotation marks", "print is spelled wrong", "The code has no error"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! The closing parenthesis is missing.",
+                        incorrectFeedback = "Not quite. Check the parentheses carefully.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Open parenthesis", "print( starts the parentheses."),
+                            ProcessStep(2, "Missing close", "The line needs a final )."),
+                            ProcessStep(3, "Fix", "Write print(\"Hello\").")
+                        ),
+                        finalResult = "The fixed code is print(\"Hello\").",
+                        finalOutput = "Hello",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l4-a2",
+                        lessonId = "tp-l4",
+                        type = ActivityType.DEBUG_CODE,
+                        prompt = "What is wrong with this code?",
+                        difficultyLabel = "Debug string",
+                        codeSnippet = "print(Hello)",
+                        options = listOf("Hello should be inside quotation marks", "print should be deleted", "Parentheses are not allowed", "The code is already correct"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! Text should be written inside quotation marks.",
+                        incorrectFeedback = "Not quite. Without quotation marks, Python looks for a variable named Hello.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Text needs quotes", "Hello is text here."),
+                            ProcessStep(2, "Add quotes", "Use \"Hello\"."),
+                            ProcessStep(3, "Fix", "Write print(\"Hello\").")
+                        ),
+                        finalResult = "The fixed code is print(\"Hello\").",
+                        finalOutput = "Hello",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l4-a3",
+                        lessonId = "tp-l4",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank to complete the code.",
+                        difficultyLabel = "Fill in the blank",
+                        codeSnippet = "print(\"CodeQuest\"____",
+                        options = listOf(")", "(", "\"", ":"),
+                        fillInAcceptedAnswers = listOf(")"),
+                        correctFeedback = "Correct! The closing parenthesis completes the print statement.",
+                        incorrectFeedback = "Error! The print statement needs a closing parenthesis.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Start", "print( opens the parentheses."),
+                            ProcessStep(2, "Finish", "A closing ) completes it."),
+                            ProcessStep(3, "Fix", "Write print(\"CodeQuest\").")
+                        ),
+                        finalResult = "The correct code is print(\"CodeQuest\").",
+                        finalOutput = "CodeQuest",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l4-a4",
+                        lessonId = "tp-l4",
+                        type = ActivityType.MULTIPLE_CHOICE,
+                        prompt = "Which code has no error?",
+                        difficultyLabel = "Choose correct code",
+                        options = listOf("print(\"Hi\")", "print(\"Hi\"", "print(Hi)", "print Hi"),
+                        correctAnswerIndex = 0,
+                        correctFeedback = "Correct! print(\"Hi\") has the correct parentheses and quotation marks.",
+                        incorrectFeedback = "Not quite. Correct Python print syntax uses print(\"text\").",
+                        processSteps = listOf(
+                            ProcessStep(1, "Use print", "Start with print."),
+                            ProcessStep(2, "Use parentheses", "Put the text inside parentheses."),
+                            ProcessStep(3, "Use quotes", "Text should be inside quotation marks.")
+                        ),
+                        finalResult = "print(\"Hi\") is the correct line.",
+                        finalOutput = "Hi",
+                        xpReward = 25
+                    ),
+                    ActivityItem(
+                        id = "tp-l4-a5",
+                        lessonId = "tp-l4",
+                        type = ActivityType.FILL_IN_BLANK,
+                        prompt = "Fill in the blank to print the word Python.",
+                        difficultyLabel = "Debug fill in",
+                        codeSnippet = "print(____)",
+                        options = listOf("\"Python\"", "Python", "print", "#Python"),
+                        fillInAcceptedAnswers = listOf("\"Python\""),
+                        correctFeedback = "Correct! Text should be inside quotation marks.",
+                        incorrectFeedback = "Error! To print text, Python needs quotation marks around the word.",
+                        processSteps = listOf(
+                            ProcessStep(1, "Goal", "We want to print text."),
+                            ProcessStep(2, "Use quotes", "Text needs quotation marks."),
+                            ProcessStep(3, "Fix", "Write print(\"Python\").")
+                        ),
+                        finalResult = "The correct code is print(\"Python\").",
+                        finalOutput = "Python",
+                        xpReward = 25
                     )
                 )
             )

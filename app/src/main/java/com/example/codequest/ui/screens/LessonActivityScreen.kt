@@ -2,6 +2,7 @@ package com.example.codequest.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -71,8 +73,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
@@ -83,7 +88,9 @@ import com.example.codequest.model.ActivityItem
 import com.example.codequest.model.CommandSequencePlayback
 import com.example.codequest.model.ActivityType
 import com.example.codequest.model.effectiveProcessSteps
+import com.example.codequest.model.correctFilledCode
 import com.example.codequest.model.isFillInBlank
+import com.example.codequest.model.isMultiBlankCode
 import com.example.codequest.model.isTicLesson1MultipleChoice
 import com.example.codequest.model.Direction
 import com.example.codequest.model.GridPosition
@@ -228,6 +235,227 @@ private fun FillInBlankAnswerField(
 }
 
 @Composable
+private fun FillInBlankCodeView(
+    code: String,
+    selectedAnswer: String,
+    resultState: String?,
+    selectedAnswers: List<String> = emptyList(),
+    activeBlankIndex: Int = -1
+) {
+    val hasAnyAnswer = selectedAnswer.isNotBlank() || selectedAnswers.any { it.isNotBlank() }
+    val blankBg by animateColorAsState(
+        targetValue = when (resultState) {
+            "correct" -> Color(0xFF00E676).copy(alpha = 0.22f)
+            "wrong"   -> Color(0xFFFF5252).copy(alpha = 0.22f)
+            else      -> if (hasAnyAnswer) ActiveCyan.copy(alpha = 0.18f)
+                         else Color.White.copy(alpha = 0.10f)
+        },
+        animationSpec = tween(350),
+        label = "blankBg"
+    )
+    val blankTextColor by animateColorAsState(
+        targetValue = when (resultState) {
+            "correct" -> Color(0xFF00E676)
+            "wrong"   -> Color(0xFFFF5252)
+            else      -> if (hasAnyAnswer) ActiveCyan else TextMuted
+        },
+        animationSpec = tween(350),
+        label = "blankTextColor"
+    )
+    val isMultiBlankActive = selectedAnswers.isNotEmpty() && activeBlankIndex >= 0 && resultState == null
+    Box(
+        modifier = Modifier
+            .wrapContentWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF0D1526))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        val normalizedCode = code.replace(Regex("_{3,}"), "___")
+        val parts = normalizedCode.split("___")
+        Text(
+            text = buildAnnotatedString {
+                parts.forEachIndexed { index, part ->
+                    if (index > 0) {
+                        val blankIdx = index - 1
+                        val answer = selectedAnswers.getOrNull(blankIdx) ?: selectedAnswer
+                        val displayAnswer = if (answer.isNotBlank()) answer else "     "
+                        val (bg, tc) = when {
+                            !isMultiBlankActive -> blankBg to blankTextColor
+                            blankIdx == activeBlankIndex -> ActiveCyan.copy(alpha = 0.30f) to ActiveCyan
+                            answer.isNotBlank() -> ActiveCyan.copy(alpha = 0.10f) to ActiveCyan.copy(alpha = 0.55f)
+                            else -> Color.White.copy(alpha = 0.08f) to TextMuted
+                        }
+                        pushStyle(SpanStyle(background = bg, color = tc, fontWeight = FontWeight.Bold))
+                        append(" $displayAnswer ")
+                        pop()
+                    }
+                    append(part)
+                }
+            },
+            fontFamily = FontFamily.Monospace,
+            color = TextPrimary,
+            fontSize = 13.sp,
+            lineHeight = 20.sp
+        )
+    }
+}
+
+@Composable
+private fun FillInAnswerChipRow(
+    choices: List<String>,
+    selectedAnswer: String,
+    enabled: Boolean,
+    label: String = "Choose the answer",
+    onChoiceClick: (String) -> Unit
+) {
+    val scroll = rememberScrollState()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = label,
+            color = TextMuted,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(scroll),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            choices.forEach { choice ->
+                val isSelected = choice == selectedAnswer
+                Box(
+                    modifier = Modifier
+                        .shadow(4.dp, RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            if (isSelected) ActiveCyan.copy(alpha = 0.18f)
+                            else Color.White.copy(alpha = 0.95f)
+                        )
+                        .border(
+                            width = if (isSelected) 2.dp else 1.dp,
+                            color = if (isSelected) ActiveCyan else Color(0xFFE2E8F5),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .clickable(enabled = enabled) { onChoiceClick(choice) }
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = choice,
+                        color = if (isSelected) ActiveCyan else Color(0xFF18224A),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BlankNavButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                if (enabled) ActiveCyan.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.05f)
+            )
+            .border(
+                1.dp,
+                if (enabled) ActiveCyan.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.08f),
+                RoundedCornerShape(20.dp)
+            )
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp)
+    ) {
+        Text(
+            text = label,
+            color = if (enabled) ActiveCyan else TextMuted,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun MultiBlankChoicePanel(
+    currentBlankIndex: Int,
+    totalBlanks: Int,
+    choices: List<String>,
+    selectedAnswer: String,
+    enabled: Boolean,
+    onChoiceClick: (String) -> Unit,
+    onBack: () -> Unit,
+    onNext: () -> Unit
+) {
+    val isFirst = currentBlankIndex == 0
+    val isLast = currentBlankIndex >= totalBlanks - 1
+    val currentAnswered = selectedAnswer.isNotBlank()
+    val scroll = rememberScrollState()
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (!isFirst) {
+                BlankNavButton(label = "← Back", enabled = enabled, onClick = onBack)
+            } else {
+                Spacer(modifier = Modifier.width(80.dp))
+            }
+            Text(
+                text = "Blank ${currentBlankIndex + 1} of $totalBlanks",
+                color = ActiveCyan,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
+            )
+            if (!isLast) {
+                BlankNavButton(label = "Next →", enabled = enabled && currentAnswered, onClick = onNext)
+            } else {
+                Spacer(modifier = Modifier.width(80.dp))
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(scroll),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            choices.forEach { choice ->
+                val isSelected = choice == selectedAnswer
+                Box(
+                    modifier = Modifier
+                        .shadow(4.dp, RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            if (isSelected) ActiveCyan.copy(alpha = 0.18f)
+                            else Color.White.copy(alpha = 0.95f)
+                        )
+                        .border(
+                            width = if (isSelected) 2.dp else 1.dp,
+                            color = if (isSelected) ActiveCyan else Color(0xFFE2E8F5),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .clickable(enabled = enabled) { onChoiceClick(choice) }
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = choice,
+                        color = if (isSelected) ActiveCyan else Color(0xFF18224A),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun CommandSequenceCheckButton(
     enabled: Boolean,
     onClick: () -> Unit
@@ -334,7 +562,7 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                 onBack = { showLeaveDialog = true },
                 activityIndex = appState.currentActivityIndex,
                 totalActivities = activities.size,
-                xp = appState.totalXP
+                xp = appState.totalExp()
             )
         }
 
@@ -350,7 +578,13 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
             LessonInteractionState.ROBOT_DEMO_GUIDE -> Unit
             LessonInteractionState.ACTIVITY -> {
                 item {
-                    TaskHeaderSection(activity = activity)
+                    TaskHeaderSection(
+                        activity = activity,
+                        codeSnippet = activity.codeSnippet,
+                        fillInSelectedAnswer = if (activity.isFillInBlank()) appState.fillInAnswer else null,
+                        fillInSelectedAnswers = if (activity.isMultiBlankCode()) appState.multiBlankAnswers else emptyList(),
+                        fillInActiveBlankIndex = if (activity.isMultiBlankCode()) appState.currentBlankIndex else -1
+                    )
                 }
                 if (activity.type == ActivityType.COMMAND_SEQUENCE) {
                     item {
@@ -389,29 +623,66 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                         ) { appState.submitActivityCheck() }
                     }
                 } else if (activity.isFillInBlank()) {
-                    activity.codeSnippet?.let { snippet ->
-                        item { GlassCard { CodeBlockCard(code = snippet) } }
-                    }
-                    item {
-                        FillInBlankAnswerField(
-                            value = appState.fillInAnswer,
-                            placeholder = activity.fillInPlaceholder ?: "Type your fix here…",
-                            readOnly = appState.lessonReviewMode,
-                            onValueChange = appState::updateFillInAnswer
-                        )
-                    }
-                    if (!appState.lessonReviewMode) {
+                    if (activity.isMultiBlankCode()) {
                         item {
-                            GradientButton(
-                                text = "Check",
-                                enabled = appState.activityReadyForCheck()
-                            ) { appState.submitActivityCheck() }
+                            MultiBlankChoicePanel(
+                                currentBlankIndex = appState.currentBlankIndex,
+                                totalBlanks = activity.codeBlanks.size,
+                                choices = appState.currentMultiBlankChoices(),
+                                selectedAnswer = appState.multiBlankAnswers.getOrNull(appState.currentBlankIndex).orEmpty(),
+                                enabled = !appState.lessonReviewMode,
+                                onChoiceClick = appState::selectMultiBlankChoice,
+                                onBack = appState::navigateBlankBack,
+                                onNext = appState::navigateBlankForward
+                            )
+                        }
+                        if (!appState.lessonReviewMode) {
+                            item {
+                                GradientButton(
+                                    text = "Check",
+                                    enabled = appState.activityReadyForCheck()
+                                ) { appState.submitActivityCheck() }
+                            }
+                        }
+                    } else if (activity.options.isNotEmpty()) {
+                        item {
+                            FillInAnswerChipRow(
+                                choices = activity.options,
+                                selectedAnswer = appState.fillInAnswer,
+                                enabled = !appState.lessonReviewMode,
+                                onChoiceClick = { choice ->
+                                    val next = if (appState.fillInAnswer == choice) "" else choice
+                                    appState.updateFillInAnswer(next)
+                                }
+                            )
+                        }
+                        if (!appState.lessonReviewMode) {
+                            item {
+                                GradientButton(
+                                    text = "Check",
+                                    enabled = appState.activityReadyForCheck()
+                                ) { appState.submitActivityCheck() }
+                            }
+                        }
+                    } else {
+                        item {
+                            FillInBlankAnswerField(
+                                value = appState.fillInAnswer,
+                                placeholder = activity.fillInPlaceholder ?: "Type your fix here…",
+                                readOnly = appState.lessonReviewMode,
+                                onValueChange = appState::updateFillInAnswer
+                            )
+                        }
+                        if (!appState.lessonReviewMode) {
+                            item {
+                                GradientButton(
+                                    text = "Check",
+                                    enabled = appState.activityReadyForCheck()
+                                ) { appState.submitActivityCheck() }
+                            }
                         }
                     }
                 } else {
-                    activity.codeSnippet?.let { snippet ->
-                        item { GlassCard { CodeBlockCard(code = snippet) } }
-                    }
                     if (activity.isTicLesson1MultipleChoice()) {
                         item {
                             val left = (3 - appState.lessonOneWrongAttempts).coerceAtLeast(0)
@@ -462,9 +733,19 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
 
             LessonInteractionState.FEEDBACK -> {
                 item {
-                    TaskHeaderSection(activity = activity)
+                    TaskHeaderSection(
+                        activity = activity,
+                        codeSnippet = activity.codeSnippet,
+                        fillInSelectedAnswer = if (activity.isFillInBlank()) appState.fillInAnswer else null,
+                        fillInSelectedAnswers = if (activity.isMultiBlankCode()) appState.multiBlankAnswers else emptyList(),
+                        fillInResultState = if (activity.isFillInBlank()) {
+                            if (appState.pendingAnswerCorrect) "correct" else "wrong"
+                        } else {
+                            null
+                        }
+                    )
                 }
-                if (appState.lessonReviewMode && activity.isFillInBlank()) {
+                if (appState.lessonReviewMode && activity.isFillInBlank() && activity.options.isEmpty()) {
                     item {
                         GlassCard {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -516,9 +797,7 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                     }
                 }
                 item {
-                    val l1mc = activity.isTicLesson1MultipleChoice()
-                    val attempts = appState.lessonOneWrongAttempts
-                    val depleted = l1mc && !appState.pendingAnswerCorrect && attempts >= 3
+                    val depleted = !appState.pendingAnswerCorrect && appState.wrongAttemptsDepleted()
                     val reasonBody = when {
                         depleted ->
                             "You have used all attempts.\n\n${activity.incorrectFeedback}"
@@ -531,13 +810,14 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                         isCommandSequence = activity.type == ActivityType.COMMAND_SEQUENCE
                     )
                 }
-                if (activity.isTicLesson1MultipleChoice()) {
-                    val attempts = appState.lessonOneWrongAttempts
-                    if (!appState.lessonReviewMode && !appState.pendingAnswerCorrect && attempts < 3) {
+                if (activity.type != ActivityType.COMMAND_SEQUENCE) {
+                    if (!appState.lessonReviewMode &&
+                        !appState.pendingAnswerCorrect &&
+                        !appState.wrongAttemptsDepleted()
+                    ) {
                         item {
-                            val left = (3 - attempts).coerceAtLeast(0)
                             Text(
-                                text = "Attempts left: $left",
+                                text = "Attempts left: ${appState.attemptsRemaining()}",
                                 color = ActiveCyan,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -555,21 +835,24 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                                 }
                             }
                         } else {
-                            when {
-                                appState.pendingAnswerCorrect -> {
-                                    val lastQ = appState.currentActivityIndex >= activities.lastIndex
+                            if (appState.pendingAnswerCorrect) {
+                                val lastQ = appState.currentActivityIndex >= activities.lastIndex
+                                GradientButton(text = if (lastQ) "Finish lesson" else "Next Question") {
+                                    appState.lesson1ProceedAfterCorrectFeedback()
+                                }
+                            } else {
+                                val lastQ = appState.currentActivityIndex >= activities.lastIndex
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    if (appState.canRetry && !appState.wrongAttemptsDepleted()) {
+                                        GradientButton(text = "Try Again") {
+                                            appState.lesson1TryAgainAfterWrong()
+                                        }
+                                    }
                                     GradientButton(text = if (lastQ) "Finish lesson" else "Next Question") {
-                                        appState.lesson1ProceedAfterCorrectFeedback()
+                                        appState.skipCurrentActivityAfterWrong()
                                     }
-                                }
-                                attempts >= 3 -> {
-                                    GradientButton(text = "View Correct Answer") {
+                                    GradientButton(text = "View Answer") {
                                         appState.lesson1OpenCorrectAnswerReveal()
-                                    }
-                                }
-                                else -> {
-                                    GradientButton(text = "Try Again") {
-                                        appState.lesson1TryAgainAfterWrong()
                                     }
                                 }
                             }
@@ -590,21 +873,27 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                             val walkthroughSteps =
                                 activity.effectiveProcessSteps(answerCorrect = true)
                             val continueToWalkthrough =
-                                activity.requiresProcessRevealBeforeFinal && walkthroughSteps.isNotEmpty()
-                            GradientButton(text = "Continue") {
-                                if (continueToWalkthrough) {
+                                !activity.isFillInBlank() &&
+                                    activity.requiresProcessRevealBeforeFinal &&
+                                    walkthroughSteps.isNotEmpty()
+                            GradientButton(text = if (activity.isFillInBlank()) "Continue to next question" else "Continue") {
+                                if (activity.isFillInBlank()) {
+                                    appState.lesson1ProceedAfterCorrectFeedback()
+                                } else if (continueToWalkthrough) {
                                     appState.showProcessRevealFromFeedback()
                                 } else {
                                     appState.showFinalResultState()
                                 }
                             }
                         } else if (activity.isFillInBlank()) {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val attempts = appState.lessonOneWrongAttempts
+                            if (attempts >= 3) {
+                                GradientButton(text = "View Correct Answer") {
+                                    appState.lesson1OpenCorrectAnswerReveal()
+                                }
+                            } else {
                                 GradientButton(text = "Try Again") {
                                     appState.lesson1TryAgainAfterWrong()
-                                }
-                                GradientButton(text = "View Correct Answer") {
-                                    appState.showProcessRevealFromFeedback()
                                 }
                             }
                         } else {
@@ -617,15 +906,57 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
             }
 
             LessonInteractionState.LESSON1_ANSWER_REVEAL -> {
-                if (!activity.isTicLesson1MultipleChoice()) {
+                if (activity.isFillInBlank()) {
                     item {
-                        Text(
-                            "Continue the lesson from the previous step.",
-                            color = TextMuted,
-                            fontSize = 14.sp
+                        TaskHeaderSection(
+                            activity = activity,
+                            muted = true,
+                            codeSnippet = activity.codeSnippet,
+                            fillInSelectedAnswers = if (activity.isMultiBlankCode()) activity.codeBlanks.map { it.correctAnswer } else emptyList()
                         )
                     }
-                } else {
+                    item {
+                        GlassCard {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text(
+                                    text = "Correct answer",
+                                    color = ActiveCyan,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.6.sp
+                                )
+                                Text(
+                                    text = if (activity.isMultiBlankCode()) activity.correctFilledCode()
+                                        else activity.fillInAcceptedAnswers.firstOrNull().orEmpty(),
+                                    color = TextPrimary,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    lineHeight = 22.sp
+                                )
+                                Text(
+                                    text = "Explanation",
+                                    color = ActiveCyan,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.6.sp
+                                )
+                                Text(
+                                    text = activity.finalResult,
+                                    color = TextMuted,
+                                    fontSize = 14.sp,
+                                    lineHeight = 20.sp
+                                )
+                            }
+                        }
+                    }
+                    item {
+                        val lastQ = appState.currentActivityIndex >= activities.lastIndex
+                        GradientButton(text = if (lastQ) "Finish lesson" else "Next Question") {
+                            appState.lesson1ProceedAfterRevealExplanation()
+                        }
+                    }
+                } else if (activity.requiresMultipleChoice()) {
                     item {
                         TaskHeaderSection(activity = activity, muted = true)
                     }
@@ -670,6 +1001,14 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                         GradientButton(text = if (lastQ) "Finish lesson" else "Next Question") {
                             appState.lesson1ProceedAfterRevealExplanation()
                         }
+                    }
+                } else {
+                    item {
+                        Text(
+                            "Continue the lesson from the previous step.",
+                            color = TextMuted,
+                            fontSize = 14.sp
+                        )
                     }
                 }
             }
@@ -754,7 +1093,13 @@ fun CodeQuestLessonActivityScreen(appState: CodeQuestAppState) {
                             if (lastActivity) "Finish lesson" else "Next question"
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             GradientButton(text = nextLabel) { appState.proceedAfterFinalResult() }
-                            GradientButton(text = "Retry") { appState.retryCurrentActivity() }
+                            if (!appState.pendingAnswerCorrect &&
+                                !appState.hasViewedCorrectAnswer &&
+                                !appState.isAnswerRevealed &&
+                                appState.canRetry
+                            ) {
+                                GradientButton(text = "Retry") { appState.retryCurrentActivity() }
+                            }
                             GradientButton(text = if (lastActivity) "Learning path" else "Continue lesson") {
                                 appState.backFromLessonActivity()
                             }
@@ -798,7 +1143,7 @@ private fun CommandSequenceActivitySingleScreen(
             onBack = onBack,
             activityIndex = appState.currentActivityIndex,
             totalActivities = activities.size,
-            xp = appState.totalXP
+            xp = appState.totalExp()
         )
         QuestionCardHeader(
             questionIndex = appState.currentActivityIndex,
@@ -870,7 +1215,7 @@ private fun LessonActivityTopBar(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(text = "⚡", fontSize = 14.sp)
-                Text(text = xp.toString(), color = CompletedGreen, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(text = "$xp EXP", color = CompletedGreen, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -892,7 +1237,15 @@ private fun LearningProgressDots(currentIndex: Int, total: Int) {
 }
 
 @Composable
-private fun TaskHeaderSection(activity: ActivityItem, muted: Boolean = false) {
+private fun TaskHeaderSection(
+    activity: ActivityItem,
+    muted: Boolean = false,
+    codeSnippet: String? = null,
+    fillInSelectedAnswer: String? = null,
+    fillInSelectedAnswers: List<String> = emptyList(),
+    fillInResultState: String? = null,
+    fillInActiveBlankIndex: Int = -1
+) {
     GlassCard(
         borderBrush = Brush.linearGradient(
             listOf(
@@ -912,6 +1265,20 @@ private fun TaskHeaderSection(activity: ActivityItem, muted: Boolean = false) {
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.5.sp
                 )
+            }
+            val snippet = codeSnippet?.takeIf { it.isNotBlank() }
+            if (snippet != null) {
+                if (activity.isFillInBlank()) {
+                    FillInBlankCodeView(
+                        code = snippet,
+                        selectedAnswer = fillInSelectedAnswer.orEmpty(),
+                        resultState = fillInResultState,
+                        selectedAnswers = fillInSelectedAnswers,
+                        activeBlankIndex = fillInActiveBlankIndex
+                    )
+                } else {
+                    CodeBlockCard(code = snippet)
+                }
             }
             Text(
                 text = activity.prompt,

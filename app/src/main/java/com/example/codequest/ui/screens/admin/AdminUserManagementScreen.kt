@@ -99,7 +99,7 @@ private fun UserRowCard(
                 StatusChip(active = user.status == UserStatus.ACTIVE)
             }
             Text(
-                "XP ${user.totalXP} · Lessons ${user.completedLessons} · Badges ${user.badgesEarned}",
+                "EXP ${user.totalXP} · Lessons ${user.completedLessons} · Badges ${user.badgesEarned}",
                 color = TextMuted,
                 fontSize = 12.sp
             )

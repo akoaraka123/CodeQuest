@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codequest.ui.theme.ActiveCyan
@@ -76,9 +77,9 @@ fun StatsRow(
         )
         StatCard(
             modifier = Modifier.weight(1f),
-            icon = "💎",
-            label = "Total XP Earned",
-            value = "$totalXp XP"
+            icon = "⚡",
+            label = "Total EXP Earned",
+            value = "$totalXp EXP"
         )
     }
 }
@@ -143,7 +144,7 @@ fun DailyChallengeCard(onStartClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     RewardPill(text = "🔥 20")
-                    RewardPill(text = "💎 50 XP")
+                    RewardPill(text = "⚡ 50 EXP")
                 }
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -215,12 +216,20 @@ fun QuestCard(quest: QuestUiModel, onQuestClick: (QuestUiModel) -> Unit) {
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = quest.title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    Text(
+                        text = quest.title,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     StatusBadge(status = quest.status)
                 }
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(text = quest.description, color = TextMuted, fontSize = 12.sp)
+                Text(text = quest.description, color = TextMuted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Spacer(modifier = Modifier.height(8.dp))
                 when (quest.status) {
                     QuestStatus.COMPLETED -> {
@@ -273,7 +282,7 @@ private fun StatusBadge(status: QuestStatus) {
             .background(bgColor)
             .padding(horizontal = 8.dp, vertical = 3.dp)
     ) {
-        Text(text = text, color = textColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(text = text, color = textColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
     }
 }
 

@@ -13,12 +13,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codequest.state.CodeQuestAppState
@@ -36,6 +43,7 @@ import com.example.codequest.ui.theme.PrimaryCyan
 import com.example.codequest.ui.theme.PrimaryPurple
 import com.example.codequest.ui.theme.TextMuted
 import com.example.codequest.ui.theme.TextPrimary
+import kotlinx.coroutines.launch
 
 @Composable
 fun CodeQuestQuestsScreen(
@@ -43,6 +51,9 @@ fun CodeQuestQuestsScreen(
     selectedTab: AppTab,
     onTabSelected: (AppTab) -> Unit
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
     val courses = appState.getCourses().map { course ->
         val sorted = course.lessons.sortedBy { it.order }
         val done = sorted.count { it.id in appState.completedLessonIds }
@@ -101,9 +112,9 @@ fun CodeQuestQuestsScreen(
                 }
                 item {
                     LearningPathStatsRow(
-                        coursesCompleted = appState.completedCourseIds.size,
+                        coursesCompleted = appState.visibleCompletedCourseCount(),
                         totalCourses = appState.getCourses().size,
-                        totalXp = appState.totalXP
+                        totalXp = appState.totalExp()
                     )
                 }
                 item { DailyChallengeCard(onStartClick = { appState.continueLearning() }) }
@@ -125,13 +136,40 @@ fun CodeQuestQuestsScreen(
                         }
                     } else {
                         CourseSection(courses) { selected ->
-                            appState.openCourseDetail(selected.id)
+                            if (selected.status == CourseProgressStatus.LOCKED) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Complete the previous quest first.")
+                                }
+                            } else {
+                                appState.openCourseDetail(selected.id)
+                            }
                         }
                     }
                 }
                 item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 96.dp, start = 16.dp, end = 16.dp),
+            snackbar = { data ->
+                Snackbar(
+                    containerColor = Color(0xFF1A2455),
+                    contentColor = TextPrimary,
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        text = data.visuals.message,
+                        color = TextPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        )
 
         Box(
             modifier = Modifier

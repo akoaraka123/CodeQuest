@@ -1,10 +1,12 @@
 package com.example.codequest.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,11 +17,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codequest.ui.components.AppTab
@@ -30,6 +35,7 @@ import com.example.codequest.ui.components.CampusMapSection
 import com.example.codequest.ui.components.CampusStatus
 import com.example.codequest.ui.components.CurrentMissionCard
 import com.example.codequest.ui.components.EarnedBadgesSection
+import com.example.codequest.ui.components.GlassCard
 import com.example.codequest.ui.components.GradientButton
 import com.example.codequest.ui.components.HeaderSection
 import com.example.codequest.ui.components.LevelProgressCard
@@ -51,6 +57,7 @@ fun CodeQuestHomeScreen(
     onTabSelected: (AppTab) -> Unit
 ) {
     appState.ensureDefaultActiveCourse()
+    val totalExp = appState.totalExp()
     val courses = appState.getCourses()
     val activeCourse = appState.getActiveCourseForHome()
     val targetLesson = appState.getActiveTargetLesson()
@@ -114,18 +121,18 @@ fun CodeQuestHomeScreen(
                     WelcomeCard(
                         displayName = appState.username,
                         dayStreak = appState.streakDays,
-                        codePoints = appState.totalXP
+                        codePoints = totalExp
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     LevelProgressCard(
-                        level = if (appState.totalXP == 0) 0 else (appState.totalXP / 100) + 1,
+                        level = appState.levelFromExp(),
                         role = "Junior Debugger",
-                        currentXp = appState.totalXP % 500,
+                        currentXp = appState.levelCurrentExp(),
                         targetXp = 500
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     val hasLearningProgress =
-                        appState.completedLessonIds.isNotEmpty() || appState.totalXP > 0
+                        appState.completedLessonIds.isNotEmpty() || totalExp > 0
                     GradientButton(
                         text = if (hasLearningProgress) "Continue Quest" else "Start Quest",
                         enabled = activeCourse != null,
@@ -187,6 +194,130 @@ fun CodeQuestHomeScreen(
                 selectedTab = selectedTab,
                 onTabSelected = onTabSelected
             )
+        }
+
+        if (appState.showOnboarding) {
+            OnboardingOverlay(
+                stepIndex = appState.onboardingStepIndex,
+                onNext = { appState.nextOnboardingStep(OnboardingSteps.size) },
+                onSkip = appState::skipOnboarding
+            )
+        }
+    }
+}
+
+private data class OnboardingStepUi(
+    val focus: String,
+    val title: String,
+    val message: String
+)
+
+private val OnboardingSteps = listOf(
+    OnboardingStepUi(
+        focus = "Welcome",
+        title = "Welcome to CodeQuest!",
+        message = "CodeQuest helps you learn Python step by step through lessons, challenges, EXP, and badges."
+    ),
+    OnboardingStepUi(
+        focus = "Notification bell",
+        title = "Notifications",
+        message = "Check here for reminders, achievements, and important updates."
+    ),
+    OnboardingStepUi(
+        focus = "Start Quest button",
+        title = "Start your quest",
+        message = "Tap Start Quest to continue your current Python learning activity."
+    ),
+    OnboardingStepUi(
+        focus = "Current Mission card",
+        title = "Current Mission",
+        message = "This shows the lesson or challenge you are currently working on."
+    ),
+    OnboardingStepUi(
+        focus = "Cyber Campus Map",
+        title = "Learning Path",
+        message = "Choose a Python challenge here. Locked challenges open after you finish the previous one."
+    ),
+    OnboardingStepUi(
+        focus = "Earned Badges",
+        title = "Badges and Achievements",
+        message = "Earn badges as you complete lessons, get perfect scores, and finish challenges."
+    ),
+    OnboardingStepUi(
+        focus = "Bottom navigation",
+        title = "Navigation",
+        message = "Use Home, Quests, Badges, and Profile to move around CodeQuest."
+    )
+)
+
+@Composable
+private fun OnboardingOverlay(
+    stepIndex: Int,
+    onNext: () -> Unit,
+    onSkip: () -> Unit
+) {
+    val safeIndex = stepIndex.coerceIn(0, OnboardingSteps.lastIndex)
+    val step = OnboardingSteps[safeIndex]
+    val isLast = safeIndex == OnboardingSteps.lastIndex
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.72f))
+            .padding(20.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        GlassCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 1.dp,
+                    brush = Brush.linearGradient(listOf(PrimaryCyan, PrimaryPurple)),
+                    shape = RoundedCornerShape(22.dp)
+                ),
+            cornerRadius = 22.dp
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(
+                    text = "Step ${safeIndex + 1} of ${OnboardingSteps.size}",
+                    color = ActiveCyan,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = step.focus,
+                    color = TextMuted,
+                    fontSize = 13.sp
+                )
+                Text(
+                    text = step.title,
+                    color = TextPrimary,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = step.message,
+                    color = TextMuted,
+                    fontSize = 15.sp,
+                    lineHeight = 21.sp
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(onClick = onSkip) {
+                        Text("Skip", color = TextMuted)
+                    }
+                    Box(modifier = Modifier.weight(1f))
+                    Box(modifier = Modifier.weight(1.4f)) {
+                        GradientButton(
+                            text = if (isLast) "Finish" else "Next",
+                            onClick = onNext
+                        )
+                    }
+                }
+            }
         }
     }
 }

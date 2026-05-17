@@ -52,14 +52,14 @@ fun AdminReportsScreen() {
         Text("Demo summaries from local accounts", color = TextMuted, fontSize = 13.sp)
 
         ReportCard(label = "Total students", value = "$totalStudents")
-        ReportCard(label = "Average XP", value = "$avgXp XP")
+        ReportCard(label = "Average EXP", value = "$avgXp EXP")
         ReportCard(label = "Completed lessons (sum)", value = "$totalLessonsDone")
 
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Top student (demo)", color = TextPrimary, fontWeight = FontWeight.SemiBold)
                 if (top != null) {
-                    Text("${top.fullName} — ${top.totalXP} XP", color = BadgeGold, fontSize = 15.sp)
+                    Text("${top.fullName} — ${top.totalXP} EXP", color = BadgeGold, fontSize = 15.sp)
                     Text("@${top.username}", color = TextMuted, fontSize = 13.sp)
                 } else {
                     Text("No student data yet.", color = TextMuted, fontSize = 13.sp)
@@ -71,7 +71,7 @@ fun AdminReportsScreen() {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Progress summary", color = TextPrimary, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Use User Management for per-student stats. This dashboard rolls up placeholder XP and lesson counts for the school prototype.",
+                    "Use User Management for per-student stats. This dashboard rolls up placeholder EXP and lesson counts for the school prototype.",
                     color = TextMuted,
                     fontSize = 13.sp,
                     lineHeight = 18.sp
