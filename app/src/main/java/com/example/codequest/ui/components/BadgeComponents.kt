@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.codequest.ui.theme.ActiveCyan
@@ -101,6 +102,7 @@ private fun DividerLine() {
 @Composable
 fun NextBadgeProgressCard(
     badgeName: String,
+    badgeIcon: String,
     progressText: String,
     progressPercentText: String,
     progress: Float
@@ -136,7 +138,7 @@ fun NextBadgeProgressCard(
                     .border(1.dp, PrimaryPurple.copy(alpha = 0.6f), RoundedCornerShape(18.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "🐞", fontSize = 34.sp)
+                Text(text = badgeIcon, fontSize = 34.sp)
             }
         }
     }
@@ -191,9 +193,11 @@ fun EarnedBadgesPanel(badges: List<EarnedBadgeUi>) {
                         Text(text = badge.icon, color = badge.accent, fontSize = 27.sp)
                     }
                     Spacer(modifier = Modifier.height(9.dp))
-                    Text(text = badge.title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(text = badge.title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                        maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = badge.description, color = TextMuted, fontSize = 12.sp)
+                    Text(text = badge.description, color = TextMuted, fontSize = 12.sp,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
@@ -233,9 +237,11 @@ fun LockedBadgesPanel(badges: List<LockedBadgeUi>) {
                         Text(text = badge.icon, color = LockedBlueGray, fontSize = 25.sp)
                     }
                     Spacer(modifier = Modifier.height(9.dp))
-                    Text(text = badge.title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(text = badge.title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                        maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = badge.description, color = TextMuted, fontSize = 12.sp)
+                    Text(text = badge.description, color = TextMuted, fontSize = 12.sp,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
@@ -300,10 +306,9 @@ fun BadgeCategoriesSection(categories: List<CategoryUi>) {
 
 @Composable
 fun RecentAchievementsSection(
+    icon: String,
     title: String,
-    subtitle: String,
-    xpText: String,
-    timeText: String
+    subtitle: String
 ) {
     GlassCard(cornerRadius = 18.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -315,16 +320,14 @@ fun RecentAchievementsSection(
                     .border(1.dp, ActiveCyan.copy(alpha = 0.65f), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "</>", color = ActiveCyan, fontWeight = FontWeight.Bold)
+                Text(text = icon, fontSize = 22.sp)
             }
             Spacer(modifier = Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text(text = subtitle, color = TextMuted, fontSize = 12.sp)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(text = xpText, color = ActiveCyan, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(text = timeText, color = TextMuted, fontSize = 12.sp)
+                Text(text = title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                    maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+                Text(text = subtitle, color = TextMuted, fontSize = 12.sp,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
     }

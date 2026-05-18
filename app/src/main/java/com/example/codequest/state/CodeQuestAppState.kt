@@ -119,8 +119,9 @@ class CodeQuestAppState {
 
         val badgeStr = p.getString("badgeProgress", "") ?: ""
         badgeProgress = if (badgeStr.isEmpty()) {
-            mapOf("first-steps" to 0, "thinking-coder" to 0, "variable-starter" to 0,
-                "function-builder" to 0, "algorithm-explorer" to 0, "cs-rookie" to 0, "neural-beginner" to 0)
+            mapOf("first-steps" to 0, "python-starter" to 0, "variable-master" to 0,
+                "input-output-champion" to 0, "condition-master" to 0, "perfect-start" to 0,
+                "debug-learner" to 0, "python-path-finisher" to 0)
         } else {
             badgeStr.split(",").mapNotNull {
                 val parts = it.split("=")
@@ -513,12 +514,13 @@ class CodeQuestAppState {
     var badgeProgress by mutableStateOf(
         mapOf(
             "first-steps" to 0,
-            "thinking-coder" to 0,
-            "variable-starter" to 0,
-            "function-builder" to 0,
-            "algorithm-explorer" to 0,
-            "cs-rookie" to 0,
-            "neural-beginner" to 0
+            "python-starter" to 0,
+            "variable-master" to 0,
+            "input-output-champion" to 0,
+            "condition-master" to 0,
+            "perfect-start" to 0,
+            "debug-learner" to 0,
+            "python-path-finisher" to 0
         )
     )
         private set
@@ -1472,6 +1474,9 @@ class CodeQuestAppState {
     fun earnedAchievementsForDisplay(): List<Achievement> =
         LocalContentRepository.achievements.filter { it.id in earnedAchievementIds }
 
+    fun earnedBadgesForDisplay(): List<Badge> =
+        LocalContentRepository.badges.filter { it.id in earnedBadgeIds }
+
     private fun grantAchievementIfNew(achievementId: String) {
         if (achievementId in earnedAchievementIds) return
         val achievement = LocalContentRepository.achievementById(achievementId) ?: return
@@ -1484,9 +1489,18 @@ class CodeQuestAppState {
     }
 
     private fun syncBadgeForAchievement(achievementId: String) {
-        when (achievementId) {
-            "first-steps", "thinking-coder" -> earnedBadgeIds = earnedBadgeIds + achievementId
+        val badgeId = when (achievementId) {
+            "first-steps" -> "first-steps"
+            "thinking-coder" -> "python-starter"
+            "variable-master" -> "variable-master"
+            "input-output-champion" -> "input-output-champion"
+            "condition-master" -> "condition-master"
+            "perfect-start" -> "perfect-start"
+            "debug-learner" -> "debug-learner"
+            "python-path-finisher" -> "python-path-finisher"
+            else -> return
         }
+        earnedBadgeIds = earnedBadgeIds + badgeId
     }
 
     private fun checkAchievementsAfterActivity(activity: ActivityItem) {
@@ -1511,6 +1525,9 @@ class CodeQuestAppState {
         }
         if (totalActivities > 0 && questionsCorrect == totalActivities) {
             grantAchievementIfNew("perfect-start")
+        }
+        if (totalActivities > 0 && questionsCorrect < totalActivities) {
+            grantAchievementIfNew("debug-learner")
         }
         if (course.id == "thinking-in-code" &&
             course.lessons.all { it.id in completedLessonIds }
@@ -1601,29 +1618,35 @@ class CodeQuestAppState {
             earnedBadgeIds = earnedBadgeIds + "first-steps"
             updates["first-steps"] = 1
         }
-        if (completedCourseIds.contains("thinking-in-code")) {
-            earnedBadgeIds = earnedBadgeIds + "thinking-coder"
-            updates["thinking-coder"] = 1
+        if ("thinking-in-code" in completedCourseIds) {
+            earnedBadgeIds = earnedBadgeIds + "python-starter"
+            updates["python-starter"] = 1
         }
-        if (completedCourseIds.contains("programming-variables")) {
-            earnedBadgeIds = earnedBadgeIds + "variable-starter"
-            updates["variable-starter"] = 1
+        if ("programming-variables" in completedCourseIds) {
+            earnedBadgeIds = earnedBadgeIds + "variable-master"
+            updates["variable-master"] = 1
         }
-        if (completedCourseIds.contains("programming-functions")) {
-            earnedBadgeIds = earnedBadgeIds + "function-builder"
-            updates["function-builder"] = 1
+        if ("python-input-output" in completedCourseIds) {
+            earnedBadgeIds = earnedBadgeIds + "input-output-champion"
+            updates["input-output-champion"] = 1
         }
-        if (completedCourseIds.contains("algorithmic-thinking")) {
-            earnedBadgeIds = earnedBadgeIds + "algorithm-explorer"
-            updates["algorithm-explorer"] = 1
+        if ("python-conditions" in completedCourseIds) {
+            earnedBadgeIds = earnedBadgeIds + "condition-master"
+            updates["condition-master"] = 1
         }
-        if (completedCourseIds.contains("cs-fundamentals")) {
-            earnedBadgeIds = earnedBadgeIds + "cs-rookie"
-            updates["cs-rookie"] = 1
+        if ("perfect-start" in earnedAchievementIds) {
+            earnedBadgeIds = earnedBadgeIds + "perfect-start"
+            updates["perfect-start"] = 1
         }
-        if (completedCourseIds.contains("neural-intro")) {
-            earnedBadgeIds = earnedBadgeIds + "neural-beginner"
-            updates["neural-beginner"] = 1
+        if ("debug-learner" in earnedAchievementIds) {
+            earnedBadgeIds = earnedBadgeIds + "debug-learner"
+            updates["debug-learner"] = 1
+        }
+        val activeCourseIds = getCourses().map { it.id }.toSet()
+        val finishedCount = activeCourseIds.count { it in completedCourseIds }
+        updates["python-path-finisher"] = finishedCount
+        if (activeCourseIds.all { it in completedCourseIds }) {
+            earnedBadgeIds = earnedBadgeIds + "python-path-finisher"
         }
         badgeProgress = updates
     }
@@ -1792,12 +1815,13 @@ class CodeQuestAppState {
         pendingUnlockedAchievements = emptyList()
         badgeProgress = mapOf(
             "first-steps" to 0,
-            "thinking-coder" to 0,
-            "variable-starter" to 0,
-            "function-builder" to 0,
-            "algorithm-explorer" to 0,
-            "cs-rookie" to 0,
-            "neural-beginner" to 0
+            "python-starter" to 0,
+            "variable-master" to 0,
+            "input-output-champion" to 0,
+            "condition-master" to 0,
+            "perfect-start" to 0,
+            "debug-learner" to 0,
+            "python-path-finisher" to 0
         )
         courseLearningXp = courseOrder.associate { it.id to 0 }.toMutableMap()
         courseCompletedLessonCounts = courseOrder.associate { it.id to 0 }.toMutableMap()

@@ -44,6 +44,7 @@ import com.example.codequest.ui.theme.ActiveCyan
 import com.example.codequest.ui.theme.BadgeGold
 import com.example.codequest.ui.theme.BackgroundEnd
 import com.example.codequest.ui.theme.BackgroundStart
+import com.example.codequest.ui.theme.CompletedGreen
 import com.example.codequest.ui.theme.PrimaryCyan
 import com.example.codequest.ui.theme.PrimaryPurple
 import com.example.codequest.ui.theme.TextMuted
@@ -88,9 +89,14 @@ fun CodeQuestHomeScreen(
         .take(3)
         .map {
             val accent = when (it.first.id) {
-                "first-steps", "thinking-coder", "variable-starter" -> ActiveCyan
-                "function-builder", "algorithm-explorer" -> PrimaryPurple
-                "cs-rookie", "neural-beginner" -> BadgeGold
+                "first-steps" -> ActiveCyan
+                "python-starter" -> PrimaryPurple
+                "variable-master" -> CompletedGreen
+                "input-output-champion" -> ActiveCyan
+                "condition-master" -> PrimaryPurple
+                "perfect-start" -> BadgeGold
+                "debug-learner" -> CompletedGreen
+                "python-path-finisher" -> BadgeGold
                 else -> ActiveCyan
             }
             BadgeUi(it.first.title, it.first.description, it.first.icon, accent)

@@ -79,17 +79,22 @@ fun CodeQuestProfileScreen(
             accent = accent
         )
     }
-    val achievements = appState.earnedAchievementsForDisplay().map { earned ->
-        val accent = when (earned.id) {
+    val achievements = appState.earnedBadgesForDisplay().map { badge ->
+        val accent = when (badge.id) {
+            "first-steps" -> ActiveCyan
+            "python-starter" -> PrimaryPurple
+            "variable-master" -> CompletedGreen
+            "input-output-champion" -> ActiveCyan
+            "condition-master" -> PrimaryPurple
             "perfect-start" -> BadgeGold
-            "thinking-coder" -> PrimaryPurple
-            "red-target-finder" -> CompletedGreen
+            "debug-learner" -> CompletedGreen
+            "python-path-finisher" -> BadgeGold
             else -> ActiveCyan
         }
         AchievementUiModel(
-            icon = earned.icon,
-            title = earned.title,
-            description = earned.description,
+            icon = badge.icon,
+            title = badge.title,
+            description = badge.description,
             date = "Earned",
             accent = accent
         )

@@ -223,12 +223,13 @@ object LocalContentRepository {
 
     val badges: List<Badge> = listOf(
         Badge("first-steps", "First Steps", "Complete your first lesson.", "👣", 1),
-        Badge("thinking-coder", "Thinking Coder", "Finish the Thinking in Code course.", "💡", 1),
-        Badge("variable-starter", "Variable Starter", "Finish Programming with Variables.", "📦", 1),
-        Badge("function-builder", "Function Builder", "Finish Programming with Functions.", "🔧", 1),
-        Badge("algorithm-explorer", "Algorithm Explorer", "Finish Algorithmic Thinking.", "🧭", 1),
-        Badge("cs-rookie", "CS Rookie", "Finish Computer Science Fundamentals.", "💻", 1),
-        Badge("neural-beginner", "Neural Beginner", "Finish Introduction to Neural Networks.", "🧠", 1)
+        Badge("python-starter", "Python Starter", "Complete the Thinking in Python challenge.", "🧠", 1),
+        Badge("variable-master", "Variable Master", "Complete the Python Variables challenge.", "📦", 1),
+        Badge("input-output-champion", "Input Output Champion", "Complete the Python Input and Output challenge.", "⌨️", 1),
+        Badge("condition-master", "Condition Master", "Complete the Python Conditions challenge.", "🔀", 1),
+        Badge("perfect-start", "Perfect Start", "Get a perfect score in any lesson.", "⭐", 1),
+        Badge("debug-learner", "Debug Learner", "Use feedback to finish a lesson after mistakes.", "🐞", 1),
+        Badge("python-path-finisher", "Python Path Finisher", "Complete all 4 Python challenges.", "🏆", 4)
     )
 
     val settingsItems = listOf(

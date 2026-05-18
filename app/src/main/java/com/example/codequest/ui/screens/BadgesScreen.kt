@@ -39,6 +39,7 @@ import com.example.codequest.ui.theme.ActiveCyan
 import com.example.codequest.ui.theme.BadgeGold
 import com.example.codequest.ui.theme.BackgroundEnd
 import com.example.codequest.ui.theme.BackgroundStart
+import com.example.codequest.ui.theme.CompletedGreen
 import com.example.codequest.ui.theme.PrimaryCyan
 import com.example.codequest.ui.theme.PrimaryPurple
 import com.example.codequest.ui.theme.TextMuted
@@ -56,9 +57,14 @@ fun CodeQuestBadgesScreen(
         .take(3)
         .map {
             val accent = when (it.first.id) {
-                "first-steps", "thinking-coder", "variable-starter" -> ActiveCyan
-                "function-builder", "algorithm-explorer" -> PrimaryPurple
-                "cs-rookie", "neural-beginner" -> BadgeGold
+                "first-steps" -> ActiveCyan
+                "python-starter" -> PrimaryPurple
+                "variable-master" -> CompletedGreen
+                "input-output-champion" -> ActiveCyan
+                "condition-master" -> PrimaryPurple
+                "perfect-start" -> BadgeGold
+                "debug-learner" -> CompletedGreen
+                "python-path-finisher" -> BadgeGold
                 else -> ActiveCyan
             }
             EarnedBadgeUi(it.first.title, it.first.description, it.first.icon, accent)
@@ -105,10 +111,11 @@ fun CodeQuestBadgesScreen(
             }
             item {
                 NextBadgeProgressCard(
-                    badgeName = nextBadge?.title ?: "No badges available yet",
+                    badgeName = nextBadge?.title ?: "All badges unlocked!",
+                    badgeIcon = nextBadge?.icon ?: "🏆",
                     progressText = nextBadge?.progressText ?: "0 / 0",
-                    progressPercentText = if (nextBadge != null) "${(nextBadge.progress * 100).toInt()}%" else "0%",
-                    progress = nextBadge?.progress ?: 0f
+                    progressPercentText = if (nextBadge != null) "${(nextBadge.progress * 100).toInt()}%" else "100%",
+                    progress = nextBadge?.progress ?: 1f
                 )
             }
             item { SectionHeader(title = "Earned Badges", action = "View All  >", onActionClick = { appState.openAllEarnedBadges() }) }
@@ -139,14 +146,14 @@ fun CodeQuestBadgesScreen(
             }
             item { SectionHeader(title = "Recent Achievements") }
             item {
-                if (earnedBadges.isEmpty()) {
+                val lastEarned = badgePairs.lastOrNull { appState.earnedBadgeIds.contains(it.first.id) }
+                if (lastEarned == null) {
                     Text("No achievements yet", color = TextMuted)
                 } else {
                     RecentAchievementsSection(
-                        title = "First Steps",
-                        subtitle = "Completed your first quest",
-                        xpText = "+100 EXP",
-                        timeText = "2h ago"
+                        icon = lastEarned.first.icon,
+                        title = lastEarned.first.title,
+                        subtitle = lastEarned.first.description
                     )
                 }
             }
